@@ -34,7 +34,7 @@ tokens = (
 	"RPAREN",
 	"COLON",
 	"RBRACE",
-	"SEMI",#
+	"SEMI",
 	"ASSIGN",
 	"COMMA",
 	"ARROW",
@@ -46,6 +46,12 @@ tokens = (
 	"DIV",
 	"PLUS",
 ) + tuple(keywords.values())
+
+states = (
+	('string', 'exclusive'),
+	('longstring', 'exclusive'),
+	('comment', 'exclusive')
+)
 
 ### Symbols ###
 t_LPAREN = r'\('
@@ -77,15 +83,17 @@ def t_INTEGER(t):
 		# Does %d actually work if it's too big?
 	return t
 
-# Downsides of matching the entire string like this is that it's more difficult to return an error message for unterminated strings.  Presumably this can be fixed by using states instead.
-def t_STRING(t): 
-	r'"(?:[^"\n\r\\]|\\[0btnrf"\\])*"|(?s)"{3}(.*?)[^\]?"{3}'
+# Compute column. 
+#     input is the input text string
+#     token is a token instance
+def find_column(input,token):
+	last_cr = input.rfind('\n',0,token.lexpos)
+	if last_cr < 0:
+		last_cr = 0
+	column = (token.lexpos - last_cr) + 1
+	return column
 
-	if t.value.startswith('"""'):
-		t.value = t.value[3:-3]
-	else:
-		t.value = t.value[1:-1] # Remove quotes
-
+def replace_escape_sequences(s):
 	special = (
 		(r'\0', '\0'),
 		(r'\b', '\b'),
@@ -98,8 +106,20 @@ def t_STRING(t):
 	)
 
 	for seq, char in special:
-		t.value = t.value.replace(seq, char)
+		s = s.replace(seq, char)
+	
+	return s
 
+def t_LONGSTRING(t):
+	r'(?s)"{3}(?:.*?[^\\])?"{3}'
+	t.value = replace_sequences(t.value[3:-3])
+	t.type = "STRING"
+	return t
+
+# Downsides of matching the entire string like this is that it's more difficult to return an error message for unterminated strings.  Presumably this can be fixed by using states instead.
+def t_STRING(t): 
+	r'"(?:[^"\n\r\\]|\\[0btnrf"\\])*"'
+	t.value = replace_sequences(t.value[1:-1])
 	return t
 
 def t_BOOLEAN(t):
@@ -124,20 +144,67 @@ def t_WHITESPACE(t):
 	r'\s+'
 	pass
 
-def t_COMMENT(t):
-	r'(?s)/\*.*?\*/'
-	pass
-
 def t_INLINECOMMENT(t):
 	r'//.*'
 	pass
 
-### Special ###
-def t_newline(t):
-	r'(\n|\r|\r\n)'
-	t.lexer.lineno += 1
+### Maintain state ###
+def t_ANY_newline(t):
+	r'(?:\r\n|\n|\r)+'
+	t.value = t.value.replace('\r\n','\n')
+	t.lexer.lineno += len(t.value)/2
 
-def t_error(t):
+### Start conditions ###
+def t_begincomment(t):
+	r'/\*'
+	t.lexer.push_state('comment')
+	pass
+
+def t_comment_end(t):
+	r'(?s).*?\*/'
+	t.lexer.pop_state()
+	pass
+
+
+def t_beginlongstring(t):
+	r'"""'
+	t.lexer.push_state('longstring')
+	t.lexer.string_start = t.lexer.lexpos
+	pass
+
+def t_longstring_stringdata(t):
+	r'"{1,2}|\\"|[^"]+'
+
+def t_longstring_end(t):
+	r'"""'
+	t.lexer.pop_state()
+	t.value = replace_escape_sequences(t.lexer.lexdata[t.lexer.code_start:t.lexer.lexpos+1])
+	t.type = "STRING"
+	return t
+
+def t_beginstring(t):
+	r'"'
+	t.lexer.push_state('string')
+	t.lexer.string_start = t.lexer.lexpos
+	pass
+
+def t_string_stringdata(t):
+	r'(?:[^"\n\r\\]|\\[0btnrf"\\])+'
+
+def t_string_end(t):
+	r'"'
+	t.lexer.pop_state()
+	t.value = replace_escape_sequences(t.lexer.lexdata[t.lexer.code_start:t.lexer.lexpos+1])
+	t.type = "STRING"
+	return t
+
+def t_string_error(t):
+	print "Illegal character in string: '%s'" % t.value[0]
+	pass
+
+
+### Error state ###
+def t_ANY_error(t):
 	print "Illegal character '%s'" % t.value[0]
 	t.lexer.skip(1)
 
@@ -145,3 +212,9 @@ lexer = lex.lex(debug = 1)
 
 if __name__ == "__main__":
 	lex.runmain()
+
+	#import sys
+	# get file input
+	#filename = sys.argv[1]
+
+	# get tokens until there is nore more input
