@@ -1,7 +1,7 @@
 Cool language scanner
 
 Nikki DelRosso
-CIS 461 - Intro to Compilers
+CIS 461 - Intro to Compiler Construction
 Spring 2013
 
 Usage: ./scanner [FILE_INPUT]
