@@ -3,6 +3,7 @@ from error import *
 
 DEBUG = False
 
+# Keyword tokens
 keywords = {
 	'case': 'CASE',
 	'class': 'CLASS',
@@ -21,10 +22,13 @@ keywords = {
 	'while': 'WHILE'
 }
 
+# "Extended Cool" reserved words
 reserved = ('abstract', 'catch', 'do', 'final', 'finally', 'for', 'forSome', 'implicit', 'import', 'lazy', 'object', 'package', 'private', 'protected', 'requires', 'return', 'sealed', 'throw', 'trait', 'try', 'type', 'val', 'with', 'yield')
 
+# Literal tokens must be a single character
 literals = ('(', ')', '{', '}', ':', '=', '<', '!', '+', '-', '*', '/', '.', ',', ';')
 
+# Other tokens
 tokens = (
 	"ID",
 	"TYPE",
@@ -36,29 +40,43 @@ tokens = (
 	"EQUALS",
 ) + tuple(keywords.values())
 
+# Possible lexing states
 states = (
 	('string', 'exclusive'),
 	('longstring', 'exclusive'),
 	('comment', 'exclusive')
 )
 
-### Symbols ###
-t_ARROW = r'=>'
-t_EQUALS = r'=='
-t_LE = r'<='
-
+# Decorator to count newlines on tokens which might match them.
 def allows_linebreaks(f):
 	def decorator(t):
 		t.lexer.lineno += t.value.count('\n')
 		return f(t)
 
+	# PLY uses the function doc as part of functionality, so we need to transfer that with the decorator.
 	decorator.__doc__ = f.__doc__
+
 	return decorator
+
+
+# Token rules
+
+### Symbols ###
+t_ARROW = r'=>'
+t_EQUALS = r'=='
+t_LE = r'<='
+
 
 ### Count newlines ###
 @allows_linebreaks
 def t_newline(t):
-	r'\n+'
+	r'\n+' # We won't encounter \r or \r\n since we'll be opening files with the U tag (or otherwise preprocessing the text so that \n is the only kind of newline)
+
+if (DEBUG):
+	def t_illegal_newline(t):
+		r'\r' # ... or if it does, display a warning when in debug
+		raise TokenError("DEBUG WARNING: Input contains carriage returns!", t)
+
 
 ### Literals ###
 def t_INTEGER(t):
@@ -75,6 +93,7 @@ def t_BOOLEAN(t):
 	t.value = bool(t.value == "true")
 	return t
 
+
 ### Identifiers ###
 def t_ID(t): 
 	r'[a-z]\w*'
@@ -88,9 +107,12 @@ def t_ID(t):
 
 t_TYPE = r'[A-Z]\w*'
 
+
 ## Ignored ###
 def t_WHITESPACE(t):
-	r'[ \t\v]+'
+	r'[ \t]+'
+	# Not newlines, so we don't have to call the newline counter every time we encounter whitespace (that's often!)
+	# Also, 
 	pass
 
 def t_INLINECOMMENT(t):
@@ -114,6 +136,7 @@ def t_comment_end(t):
 def t_comment_content(t):
 	r'(?:[^*]|\*[^/])+'
 	pass
+
 
 ### Strings ###
 def replace_escape_sequences(s):
@@ -185,7 +208,6 @@ def t_string_longstring_error(t):
 ### Error state ###
 def t_INITIAL_comment_error(t):
 	t.lexer.skip(1)
-	print t.lexer.lexstate
 	raise TokenError("Illegal character: %s " % repr(t.value[0]), t)
 
 lexer = lex.lex(debug = DEBUG)
