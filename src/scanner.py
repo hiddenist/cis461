@@ -1,13 +1,21 @@
+import sys
 from lexer import tokens, reserved, lexer as lex
 from error import *
-import sys
 
+
+USAGE = "usage: %s [INPUT_FILE]" % sys.argv[0]
 
 if __name__ == "__main__":
+	if len(sys.argv) != 2:
+		sys.exit(USAGE)
 
 	filename = sys.argv[1]
 
-	f = open(filename,'U')
+	try:
+		f = open(filename,'U')
+	except IOError, e:
+		sys.exit(e)
+
 	text = f.read()
 	f.close()
 
@@ -44,3 +52,4 @@ if __name__ == "__main__":
 		if state == 'comment': token = lex.comment_start
 		if state in ('longstring', 'string'): token = lex.string_start
 		TokenError("\nUnterminated %s: Encountered EOF\n" % (state), token).display()
+		sys.stderr

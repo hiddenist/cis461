@@ -1,0 +1,10 @@
+Cool language scanner
+
+Nikki DelRosso
+CIS 461 - Intro to Compilers
+Spring 2013
+
+Usage: scanner [FILE_INPUT]
+
+Contents:
+	PLY library

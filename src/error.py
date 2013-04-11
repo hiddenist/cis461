@@ -6,6 +6,9 @@ class Error(Exception):
 		super(Error, self).__init__(string)
 		Error.errors += 1
 		self.errorno = Error.errors
+
+	def display(self):
+		sys.stderr.write(str(self) + '\n')
 		
 class TokenError(Error):
 	def __init__(self, string, token=None):
