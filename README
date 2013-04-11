@@ -7,16 +7,21 @@ Spring 2013
 Usage: ./scanner [FILE_INPUT]
 
 Contents:
-	src/ - Contains source code
-		ply/       - PLY library
+	src/       - Contains source code
+	|
+	|	ply/       - The PLY library (so you don't have to install it!)
+	|
+	|	error.py   - Contains exceptions for error handling.  Includes the calculation
+	|	             of columns for error reporting.
+	|
+	|	lexer.py   - Contains lexing rules, token definitions, and a list of "Extended
+	|	             Cool" reserved words.
+	|
+	|	scanner.py - The driver; handles file reading, the token loop, and detects 
+	|	             and displays errors.
+	
+	README     - This file.
 
-		error.py   - Contains exceptions for error handling.  Includes the calculation
-		             of columns for error reporting.
-
-		lexer.py   - Contains lexing rules, token definitions, and a list of "Extended
-		             Cool" reserved words.
-
-		scanner.py - The driver; handles file reading, the token loop, and detects 
-		             and displays errors.
+	scanner    - A shortcut executable for running the driver file.
 		
 
