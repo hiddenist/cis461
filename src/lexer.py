@@ -26,7 +26,6 @@ reserved = ('abstract', 'catch', 'do', 'final', 'finally', 'for', 'forSome', 'im
 literals = ('(', ')', '{', '}', ':', '=', '<', '!', '+', '-', '*', '/', '.', ',', ';')
 
 tokens = (
-	"EOF",
 	"ID",
 	"TYPE",
 	"INTEGER",
@@ -79,16 +78,19 @@ def t_BOOLEAN(t):
 ### Identifiers ###
 def t_ID(t): 
 	r'[a-z]\w*'
-
-
 	t.type = keywords.get(t.value, 'ID') # Check for keywords
+
+	# We can't raise an error and return a token, so store the error in the token for the driver to display
+	if t.value in reserved:
+		t.error = TokenError("Illegal reserved word used: '%s'" % t.value, t)
+	
 	return t
 
 t_TYPE = r'[A-Z]\w*'
 
 ## Ignored ###
 def t_WHITESPACE(t):
-	r'\s+'
+	r'[ \t\v]+'
 	pass
 
 def t_INLINECOMMENT(t):

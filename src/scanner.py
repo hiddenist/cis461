@@ -34,19 +34,16 @@ if __name__ == "__main__":
 			e.display()
 			continue
 
-		if not token: break
-
-		if token.type == 'ID' and token.value in reserved:
-			TokenError("Illegal reserved word used: '%s'" % token.value, token).display()
+		if not token: break # EOF
 
 		if hasattr(token, 'error'):
 			token.error.display()
 
 		print template.format(token.type, token.lineno, TokenError.find_column(token.lexpos), token.value, width=largest_token)
 
-	# The state when EOF is encountered is important
+	# Report errors about unfinished states when encountering EOF
+	# Short strings don't seem to be able to trigger this, since EOF is counted as a newline - but my intuition says that it might still be possible, so I'll leave it here.
 	state = lex.lexstate
-	
 	if state in ('comment', 'string', 'longstring'):
 		token = None
 		if state == 'comment': token = lex.comment_start
