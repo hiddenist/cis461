@@ -1,14 +1,15 @@
 import ply.yacc as yacc
 from lexer import tokens
-from parse_tree import *
+from tree import *
 
 
-# This one should be first in the parsing file to make it the "base" rule
+# Starting grammar rule goes first in the file
 def p_program(p):
 	"""
 	program : classdecl program
 	           | classdecl 
 	"""
+
 
 def p_error(p):
 	print "Parsing syntax error"
@@ -31,7 +32,7 @@ def p_classopts(p):
 def p_varformals(p):
 	"""
 	varformals : '(' empty ')'
-		|'(' var_list ')'
+		| '(' var_list ')'
 	"""
 
 def p_var_list(p):
@@ -62,10 +63,16 @@ def p_feature(p):
 	"""
 
 def p_expr_native(p):
-	"expr_native = expr | NATIVE"
+	"""
+	expr_native : expr 
+		| NATIVE
+	"""
 
 def p_opt_override(p):
-	"opt_override : empty | OVERRIDE"
+	"""
+	opt_override : empty 
+		| OVERRIDE
+	"""
 
 
 def p_formals(p):
@@ -89,13 +96,13 @@ def p_actuals(p):
 		| '(' exprlist ')'
 	"""
 
-def p_expr_list(p):
-	"expr_list : expr expr_list_tail"
+def p_exprlist(p):
+	"exprlist : expr exprlist_tail"
 
-def p_expr_list_tail(p):
+def p_exprlist_tail(p):
 	"""
-	expr_list_tail : empty
-		| ',' expr_list
+	exprlist_tail : empty
+		| ',' exprlist
 	"""
 
 def p_block(p):
@@ -112,7 +119,7 @@ def p_primary(p):
 		| NEW TYPE actuals
 		| '{' block '}'
 		| '(' expr ')'
-		| null
+		| NULL
 		| '(' ')'
 		| ID
 		| INTEGER
@@ -123,13 +130,9 @@ def p_primary(p):
 
 def p_cases(p):
 	"""
-	cases : '{' case ID ':' TYPE '=>' block '}'
-		| '{' case NULL '=>' block '}'
+	cases : '{' CASE ID ':' TYPE ARROW block '}'
+		| '{' CASE NULL ARROW block '}'
 	"""
-
-def p_expr_primary(p):
-	"expr : primary"
-	p[0] = p[1]
 
 def p_expr_assign(p):
 	"expr : ID '=' expr"
@@ -146,23 +149,23 @@ def p_control_while(p):
 	"control : WHILE '(' expr ')' control"
 	p[0] = WhileExpr(p[3], p[5])
 
-def p_match(p):
-	"match : cases MATCH"
-
 def p_control_match(p):
 	"control : match"
 	p[0] = p[1]
+
+def p_match(p):
+	"match : cases MATCH"
 
 def p_match_comparison(p):
 	"match : comparison"
 	p[0] = p[1]
 
 def p_comparison_lt(p):
-	"comparison : comparison < equiv"
+	"comparison : comparison '<' equiv"
 	p[0] = LTExpr(p[1], p[3])
 
 def p_comparison_lte(p):
-	"comparison : comparison <= equiv"
+	"comparison : comparison LE equiv"
 	p[0] = LTEExpr(p[1], p[3])
 
 def p_comparison_equiv(p):
@@ -170,7 +173,7 @@ def p_comparison_equiv(p):
 	p[0] = p[1]
 
 def p_equiv(p):
-	"equiv : equiv '==' sum"
+	"equiv : equiv EQUALS sum"
 	p[0] = EqExpr(p[1], p[2])
 
 def p_equiv_sum(p):
@@ -221,3 +224,4 @@ def p_dot_primary(p):
 	"dot : primary"
 	p[0] = p[1]
 
+yacc.yacc(write_tables=0)
