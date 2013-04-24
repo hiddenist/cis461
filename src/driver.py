@@ -27,6 +27,7 @@ if __name__ == "__main__":
 		yacc.parse(text, lexer=lex)
 	except TokenError, e:
 		e.display()
+		sys.exit("Failed with %d error%s." % (Error.errors, '' if Error.errors == 1 else 's'))
 
 	state = lex.lexstate
 	if state in ('comment', 'string', 'longstring'):
@@ -36,7 +37,9 @@ if __name__ == "__main__":
 		TokenError("\nUnterminated %s: Encountered EOF\n" % (state), token).display()
 		sys.stderr
 
-	print "Parsed program with %d error%s." % (Error.errors, '' if Error.errors == 1 else 's')
+
+	print "Parsing complete. Encountered %d error%s." % (Error.errors, '' if Error.errors == 1 else 's')
+
 
 
 

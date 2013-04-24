@@ -65,9 +65,9 @@ class DotExpr(Expr):
 
 class BinaryExpr(Expr):
 	def __init__(self, left, right):
-		self.lhs = left
-		selg.rhs = right
-		super(BinaryExpr, self).__init__(lhs, rhs)
+		self.left = left
+		self.right = right
+		super(BinaryExpr, self).__init__(left, right)
 
 class UnaryExpr(Expr):
 	def __init__(self, arg):
@@ -108,14 +108,14 @@ class NegExpr(UnaryExpr):
 class Primary(Node):
 	TYPE = "primary"
 
-class Constructor(Primary):
-	TYPE = "constructor"
-	def __init__(self, type, args):
+class Call(Primary):
+	TYPE = "call"
+	def __init__(self, type, actuals):
 		self.type = type
 		self.actuals = actuals
-		super(Constructor, self).__init__(type, args)
+		super(Call, self).__init__(type, actuals)
 
-class Super(Constructor):
+class Super(Call):
 	TYPE = "super"
 
 class NullaryPrimary(Primary):

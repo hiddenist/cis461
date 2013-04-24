@@ -15,9 +15,8 @@ def p_program(p):
 
 
 def p_error(p):
-	print p.lineno, p.lexpos
-	TokenError("Syntax error: unexpected token", p).display()
-	# We could also raise this error instead of just displaying it.
+	# If we don't want to fail on an error, we could display this here instead of raising
+	raise TokenError("Syntax error: unexpected token", p)
 
 def p_empty(p):
 	'empty :'
@@ -156,8 +155,19 @@ def p_exprlist_tail(p):
 def p_block(p):
 	"""
 	block : empty
-		| expr ';' expr
-		| VAR id ':' type '=' expr ';' expr
+		| block_contents ';' expr
+	"""
+
+def p_block_contents(p):
+	"""
+	block_contents : block_instr ';' block_instr
+		| block_instr empty
+	"""
+
+def p_block_instr(p):
+	"""
+		block_instr : VAR id ':' type '=' expr
+			| expr
 	"""
 
 def p_block_expr(p):
@@ -176,6 +186,10 @@ def p_primary_pexpr(p):
 def p_primary_super(p):
 	"primary : SUPER '.' id actuals"
 	p[0] = Super(p[3], p[4])
+
+def p_primary_call(p):
+	"primary : id actuals"
+	p[0] = Call(p[1], p[2])
 
 def p_primary_constructor(p):
 	"primary : NEW type actuals"
@@ -228,7 +242,7 @@ def p_expr_control(p):
 	p[0] = p[1]
 
 def p_control_if(p):
-	"control : IF '(' expr ')' ELSE control"
+	"control : IF '(' expr ')' expr ELSE expr"
 	p[0] = IfExpr(p[3], p[5], p[7])
 
 def p_control_while(p):
