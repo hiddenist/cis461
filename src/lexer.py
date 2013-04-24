@@ -211,3 +211,14 @@ def t_INITIAL_comment_error(t):
 	raise TokenError("Illegal character: %s " % repr(t.value[0]), t)
 
 lexer = lex.lex(debug = DEBUG)
+
+# Modify the lexer's token method to handle errors, since yacc takes over the role of our driver and calls this.
+def error_handling_token(get_token):
+	def new_fn(*args, **kwargs):
+		token = get_token(*args, **kwargs)
+		if hasattr(token, 'error'):
+			token.error.display()
+		return token
+	return new_fn
+
+lexer.token = error_handling_token(lexer.token)
