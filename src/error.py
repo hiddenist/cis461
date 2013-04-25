@@ -2,6 +2,7 @@ import sys
 
 class Error(Exception):
 	errors = 0
+	MAX_ERRORS = 10
 	def __init__(self, string):
 		super(Error, self).__init__(string)
 		Error.errors += 1

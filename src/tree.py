@@ -2,6 +2,7 @@ class Node(object):
 	TYPE = "node"
 	TAB = '    '
 	def __init__(self, *children):
+		print "Creating '%s' with args" % self.TYPE, map(lambda x: x.TYPE if hasattr(x, 'TYPE') else x, children)
 		self.children = children
 
 	def __str__(self):
@@ -28,6 +29,13 @@ class Document(Node):
 
 class Class(Node):
 	TYPE = "class"
+
+class Block(Node):
+	Type = "block"
+	def __init__(self, value = None, contents = ()):
+		self.value = value
+		self.contents = contents
+		super(Block, self).__init__(value, *contents)
 
 class Expr(Node):
 	TYPE = "expr"
@@ -201,10 +209,11 @@ class ClassBody(Node):
 class ClassOpts(Node):
 	TYPE = "classopts"
 
-def VarInit(Feature):
+class VarInit(Feature):
 	TYPE = "init"
-	def __init__(self, id, type, value):
+	def __init__(self, i, type, value):
 		self.id = id
 		self.type = type
 		self.value = value
 		super(VarInit, self).__init__(id, type, value)
+

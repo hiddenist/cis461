@@ -16,7 +16,12 @@ def p_program(p):
 
 def p_error(p):
 	# If we don't want to fail on an error, we could display this here instead of raising
-	raise TokenError("Syntax error: unexpected token", p)
+	err = TokenError("Syntax error: unexpected token", p)
+	if Error.errors < Error.MAX_ERRORS:
+		err.display()
+		yacc.errok() # Ignore the error, discard the token, and continue trying to parse
+	else:
+		raise err
 
 def p_empty(p):
 	'empty :'
@@ -55,13 +60,15 @@ def p_var_list(p):
 	"var_list : VAR id ':' type var_list_tail"
 	p[0] = (Formal(p[2], p[4]),) + p[5]
 
-def p_var_list_tail_empty(p):
-	"var_list_tail : empty"
-	p[0] = ()
-
 def p_var_list_tail(p):
-	"var_list_tail : ',' var_list"
-	p[0] = p[2]
+	"""
+	var_list_tail : empty
+		| ',' var_list
+	"""
+	if len(p) == 2:
+		p[0] = ()
+	else:
+		p[0] = p[2]
 
 
 def p_classbody(p):
@@ -77,14 +84,17 @@ def p_features(p):
 	"features : feature features"
 	p[0] = (p[1],) + p[2]
 
+def p_var_init(p):
+	"var_init : VAR id ':' type '=' expr"
+	p[0] = VarInit(p[2], p[4], p[6])
 
 def p_feature_var(p):
 	"""
-	feature : VAR id ':' type '=' expr
-	feature : VAR id '=' NATIVE
+	feature : var_init ';'
+		| VAR id '=' NATIVE ';'
 	"""
-	if len(p) == 6:
-		p[0] = VarInit(p[2], p[4], p[6])
+	if len(p) == 2:
+		p[0] = p[1]
 	else:
 		p[0] = VarInit(p[2], p[4], p[4])
 
@@ -124,13 +134,14 @@ def p_formal_list(p):
 	"formal_list : id ':' type formal_list_tail"
 	p[0] = (Formal(p[1], p[3]),) + p[4]
 
-def p_formal_list_tail_empty(p):
-	"formal_list_tail : empty"
-	p[0] = ()
-
 def p_formal_list_tail(p):
-	"formal_list_tail : ',' formal_list"
-	p[0] = p[2]
+	"""formal_list_tail : ',' formal_list
+		| empty
+	"""
+	if len(p) == 2:
+		p[0] = ()
+	else:
+		p[0] = p[2]
 
 def p_actuals_empty(p):
 	"actuals : '(' ')' "
@@ -157,18 +168,32 @@ def p_block(p):
 	block : empty
 		| block_contents ';' expr
 	"""
+	if len(p) == 2:
+		p[0] = Block()
+	else:
+		p[2] = Block(p[3], p[1])
+	
 
 def p_block_contents(p):
+	"block_contents : block_instr block_contents_tail"
+	p[0] = (p[1],) + p[2]
+
+def p_block_contents_tail(p):
 	"""
-	block_contents : block_instr ';' block_instr
-		| block_instr empty
+	block_contents_tail : ';' block_contents
+		| empty
 	"""
+	if len(p) == 2:
+		p[0] = ()
+	else:
+		p[0] = p[2]
 
 def p_block_instr(p):
 	"""
-		block_instr : VAR id ':' type '=' expr
+		block_instr : var_init
 			| expr
 	"""
+	p[0] = p[1]
 
 def p_block_expr(p):
 	"block : expr"
@@ -325,4 +350,4 @@ def p_dot_primary(p):
 	"dot : primary"
 	p[0] = p[1]
 
-yacc.yacc()
+yacc.yacc(debug=1)
