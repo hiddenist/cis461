@@ -1,0 +1,130 @@
+class Main() extends IO() {
+
+  var passed : Int = 0;
+  var failed : Int = 0;
+  var total : Int = 63;
+  
+  def assertTrue(name : String, x : Boolean) : Unit = {
+    if (x) passed = passed+1 else {
+      out("Failed test: ".concat(name)).out("\n");
+      failed = failed+1
+    }
+  };
+  
+  def assertFalse(name : String, x : Boolean) : Unit = assertTrue(name,!x);
+  
+  def assertEqual(name : String, x1 : Any, x2 : Any) : Unit = 
+    assertTrue(name.concat(", expected ").concat(x1.toString()),x1 == x2);
+  
+  var a1 : Any = "Apple";
+  var a2 : Any = 333;
+  var a3 : Any = true;
+  
+  var self : Vector = new Vector();
+  
+  def setUp() : Unit = {
+    self = new Vector()
+  };
+  
+  def test0() : Unit = {
+    assertEqual("size of empty vector",0,self.size());
+    var e : Enumeration = self.elements();
+    assertFalse("empty enumeration hasNext",e.hasNext())
+  };
+  
+  def test1() : Unit = {
+    self.add(a1);
+    assertEqual("size of {a1}",1,self.size());
+    var e : Enumeration = self.elements();
+    assertTrue("before first element",e.hasNext());
+    assertEqual("first element",a1,e.next());
+    assertFalse("after first element",e.hasNext());
+    // again for good measure:
+    e = self.elements();
+    assertTrue("before first element",e.hasNext());
+    assertEqual("first element",a1,e.next());
+    assertFalse("after first element",e.hasNext())
+  };
+  
+  def test2() : Unit = {
+    self.add(a1);
+    self.add(a2);
+    assertEqual("size of {a1,a2}",2,self.size());
+    var e1 : Enumeration = self.elements();
+    var e2 : Enumeration = self.elements();
+    assertTrue("before first of two",e1.hasNext());
+    assertEqual("first of two",a1,e1.next());
+    assertTrue("before first of two (2)",e2.hasNext());
+    assertEqual("first of two (2)",a1,e2.next());
+    assertEqual("second of two",a2,e1.next());
+    assertFalse("after second of two",e1.hasNext());
+    assertTrue("after first of two",e2.hasNext());
+    e1 = self.elements();
+    assertEqual("second of two (2)",a2,e2.next());
+    assertEqual("first of two (3)",a1,e1.next())
+  };
+  
+  def test2Clear() : Unit = {
+    self.add(a1);
+    self.add(a2);
+    self.clear();
+    assertEqual("cleared",0,self.size());
+    assertFalse("cleared hasNext()",self.elements().hasNext());
+    self.add(a3);
+    assertEqual("now one",1,self.size());
+    assertEqual("first element",a3,self.elements().next())
+  };
+  
+  def test20() : Unit = {
+    var i : Int = 0;
+    while (i < 20) {
+      self.add(i.toString());
+      i = i + 1
+    };
+    var e : Enumeration = self.elements();
+    i = 0;
+    while (i < 20) {
+      assertTrue("hasNext()#".concat(i.toString()),e.hasNext());
+      assertEqual("element",i.toString(),e.next());
+      i = i + 1
+    }
+  };
+  
+  def testError(n : Int) : Unit = {
+    if (n == 0) {
+      self.elements().next(); ()
+    } else if (n == 1) {
+      self.add(a1);
+      var e : Enumeration = self.elements();
+      e.next();
+      e.next()
+    } else {
+      abort("unknown error: ".concat(n.toString()))
+    };
+    out("Failed error test.  No abort.\n");
+    ()
+  };
+  
+  {
+     setUp(); test0();
+     setUp(); test1();
+     setUp(); test2();
+     setUp(); test2Clear();
+     setUp(); test20()
+  };
+  
+  {
+    out("Passed ").out_any(passed).out(" tests of ").out_any(total).out("\n");
+    out("Failed ").out_any(failed).out(" tests.\n")
+  };
+  
+  {
+    out("Enter integer [0,1]: ");
+    var error : Int = 0;
+    var errors : String = in();
+    if (errors == "0") error = 0
+    else if (errors == "1") error = 1
+    else error = 2;
+    setUp(); testError(error)
+  };
+}
