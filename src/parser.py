@@ -166,27 +166,25 @@ def p_exprlist_tail(p):
 def p_block(p):
 	"""
 	block : empty
-		| block_contents ';' expr
+		| block_contents expr
 	"""
 	if len(p) == 2:
 		p[0] = Block()
 	else:
-		p[2] = Block(p[3], p[1])
+		p[2] = Block(p[2], p[1])
 	
 
 def p_block_contents(p):
-	"block_contents : block_instr block_contents_tail"
-	p[0] = (p[1],) + p[2]
-
-def p_block_contents_tail(p):
 	"""
-	block_contents_tail : ';' block_contents
-		| empty
+	block_contents : block_instr ';' 
+		       | block_contents block_instr ';'
 	"""
-	if len(p) == 2:
-		p[0] = ()
+	if len(p) == 3:
+		p[0] = (p[1],)
 	else:
-		p[0] = p[2]
+		p[0] = p[1] + (p[2],)
+		
+		
 
 def p_block_instr(p):
 	"""
