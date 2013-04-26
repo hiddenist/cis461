@@ -16,13 +16,13 @@ Contents:
   | ply/       - The PLY library (so you don't have to install it!)
   |
   | driver.py  - The driver file.  Takes a cool file as input, and runs the lexer
-  |              and parser on the file.
+  |              and parser on the file
   |
   | error.py   - Contains exceptions for error handling.  Includes the 
-  |              calculation of columns for error reporting.
+  |              calculation of columns for error reporting
   |
   | lexer.py   - Contains lexing rules, token definitions, and a list of 
-  |              "Extended Cool" reserved words.
+  |              "Extended Cool" reserved words
   |
   | parser.py  - Contains grammar rules and builds an abstract syntax tree using
   |              nodes from tree.py
@@ -32,8 +32,8 @@ Contents:
   
   examples/  - Contains example cool programs
   
-  README     - This file.
+  README     - This file
   
-  cool       - A shortcut executable for running the driver file.
+  cool       - A shortcut executable for running the driver file
 
 
