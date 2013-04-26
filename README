@@ -18,11 +18,11 @@ Contents:
   | driver.py  - The driver file.  Takes a cool file as input, and runs the lexer
   |              and parser on the file.
   |
-  |	error.py   - Contains exceptions for error handling.  Includes the calculation
-  |	             of columns for error reporting.
+  |	error.py   - Contains exceptions for error handling.  Includes the 
+	|              calculation of columns for error reporting.
   |
-  |	lexer.py   - Contains lexing rules, token definitions, and a list of "Extended
-  |	             Cool" reserved words.
+  |	lexer.py   - Contains lexing rules, token definitions, and a list of 
+	|              "Extended Cool" reserved words.
   |
   | parser.py  - Contains grammar rules and builds an abstract syntax tree using
   |              nodes from tree.py
