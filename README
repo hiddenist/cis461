@@ -1,15 +1,20 @@
-Cool language scanner
-
 Nikki DelRosso
 CIS 461 - Intro to Compiler Construction
 Spring 2013
 
-Usage: ./scanner [FILE_INPUT]
+
+Compiler for the Cool language for the University of Oregon spring 2013 compilers class. This is not yet a full compiler.  Currently, it lexes the input file and creates an abstract syntax tree.
+
+
+Usage: ./cool [FILE_INPUT]
 
 Contents:
 	src/       - Contains source code
 	|
 	|	ply/       - The PLY library (so you don't have to install it!)
+	|
+	| driver.py  - The driver file.  Takes a cool file as input, and runs the lexer
+	|              and parser on the file.
 	|
 	|	error.py   - Contains exceptions for error handling.  Includes the calculation
 	|	             of columns for error reporting.
@@ -17,11 +22,16 @@ Contents:
 	|	lexer.py   - Contains lexing rules, token definitions, and a list of "Extended
 	|	             Cool" reserved words.
 	|
-	|	scanner.py - The driver; handles file reading, the token loop, and detects 
-	|	             and displays errors.
+	| parser.py  - Contains grammar rules and builds an abstract syntax tree using
+	|              nodes from tree.py
+	|
+	| tree.py    - Class definitions for the AST nodes, including methods to print 
+	|              the tree.
+
+	examples/  - Contains example cool programs
 	
 	README     - This file.
 
-	scanner    - A shortcut executable for running the driver file.
+	cool       - A shortcut executable for running the driver file.
 		
 
