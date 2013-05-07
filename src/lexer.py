@@ -1,7 +1,6 @@
 import ply.lex as lex
 from error import *
-
-DEBUG = False
+from driver import DEBUG
 
 # Keyword tokens
 keywords = {
@@ -210,7 +209,7 @@ def t_INITIAL_comment_error(t):
 	t.lexer.skip(1)
 	raise TokenError("Illegal character: %s " % repr(t.value[0]), t)
 
-lexer = lex.lex(debug = DEBUG)
+lexer = lex.lex(debug=DEBUG)
 
 # Modify the lexer's token method to handle errors, since yacc takes over the role of our driver and calls this.
 def error_handling_token(get_token):

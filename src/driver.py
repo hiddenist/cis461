@@ -1,8 +1,6 @@
 import sys
-from lexer import tokens, reserved, lexer as lex
-from parser import yacc
-from error import *
 
+DEBUG = False
 
 USAGE = """usage: %s <INPUT FILE> (<OUTPUT FORMAT>)
 
@@ -11,6 +9,10 @@ USAGE = """usage: %s <INPUT FILE> (<OUTPUT FORMAT>)
 """ % sys.argv[0]
 
 if __name__ == "__main__":
+	from lexer import tokens, reserved, lexer as lex
+	from parser import yacc
+	from error import *
+
 	if len(sys.argv) not in (2, 3):
 		sys.exit(USAGE)
 
@@ -33,7 +35,7 @@ if __name__ == "__main__":
 	Error.input = text
 
 	try:
-		tree = yacc.parse(text, lexer=lex)
+		tree = yacc.parse(text, lexer=lex, debug=DEBUG)
 		print tree.pretty(0, style)
 	except TokenError, e:
 		e.display()
@@ -45,12 +47,15 @@ if __name__ == "__main__":
 		if state == 'comment': token = lex.comment_start
 		if state in ('longstring', 'string'): token = lex.string_start
 		TokenError("\nUnterminated %s: Encountered EOF\n" % (state), token).display()
-		sys.stderr
 
 
-	print "Parsing complete. Encountered %d error%s." % (
-		Error.errors, '' if Error.errors == 1 else 's'
-	)
+	if Error.errors > 0:
+		sys.stderr.write(
+			"Parsing complete with %d error%s.\n" % (
+				Error.errors, 
+				'' if Error.errors == 1 else 's'
+			)
+		)
 
 
 

@@ -2,7 +2,7 @@ import ply.yacc as yacc
 from lexer import tokens
 from tree import *
 from error import *
-
+from driver import DEBUG
 
 # Starting grammar rule goes first in the file
 def p_program(p):
@@ -367,4 +367,4 @@ def p_dot_primary(p):
 	"dot : primary"
 	p[0] = p[1]
 
-yacc.yacc(debug=1)
+yacc.yacc(debug=DEBUG)
