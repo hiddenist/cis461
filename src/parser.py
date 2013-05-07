@@ -317,7 +317,7 @@ def p_comparison_equiv(p):
 
 def p_equiv(p):
 	"equiv : equiv EQUALS sum"
-	p[0] = EqExpr(p[1], p[2])
+	p[0] = EqExpr(p[1], p[3])
 
 def p_equiv_sum(p):
 	"equiv : sum"
@@ -361,7 +361,7 @@ def p_negation_dot(p):
 
 def p_dot_access(p):
 	"dot : dot '.' id actuals"
-	p[0] = DotExpr(p[1], p[3], p[4])
+	p[0] = Call(Dot(p[1], p[3]), p[4])
 
 def p_dot_primary(p):
 	"dot : primary"

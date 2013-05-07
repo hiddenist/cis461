@@ -36,7 +36,11 @@ class Node(object):
 		if len(self.children) == 0:
 			children = texts['empty']
 		else:
-			children = texts['separator'].join([child.pretty(depth+1, style) if isinstance(child, Node) else self.TAB*(depth+1) + repr(child) for child in self.children])
+			children = texts['separator'].join([
+				child.pretty(depth+1, style) 
+					if isinstance(child, Node) 
+					else self.TAB*(depth+1) + repr(child) for child in self.children
+			])
 			children = texts['wrapper'] % {'children':children, 'tab_inner': tinner, 'tab': t}
 		return  texts['parent'] % {
 				'type' : self.TYPE,
@@ -76,7 +80,7 @@ class Actuals(List):
 	TYPE = "actuals"
 
 class Block(Node):
-	Type = "block"
+	TYPE = "block"
 	def __init__(self, value = None, contents = []):
 		self.value = value
 		self.contents = contents
@@ -115,13 +119,12 @@ class WhileExpr(Expr):
 		self.control = control
 		super(WhileExpr, self).__init__(cond, control)
 
-class DotExpr(Expr):
+class Dot(Node):
 	TYPE = "dot"
-	def __init__(self, this, id, actuals):
-		self.this = this
-		self.id = id
-		self.actuals = actuals
-		super(DotExpr, self).__init__(this, id, actuals)
+	def __init__(self, parent, child):
+		self.parent = parent
+		self.child = child
+		super(Dot, self).__init__(parent, child)
 
 class BinaryExpr(Expr):
 	def __init__(self, left, right):
@@ -218,7 +221,7 @@ class Literal(UnaryPrimary):
 		if style == "parens":
 			return self.TAB*depth + repr(self.value)
 		elif style == "json":
-			return '%s' % self.rep()
+			return self.rep()
 
 		return super(Literal, self).pretty(depth, style)
 
@@ -246,6 +249,13 @@ class Actual(Node):
 
 class Type(Symbol):
 	TYPE = "type"
+
+class Constructor(Node):
+	TYPE = "constructor"
+	def __init__(self, type, actuals):
+		self.type = type
+		self.actuals = actuals
+		super(Constructor, self).__init__(type, actuals)
 
 class Feature(Node):
 	TYPE = "feature"
