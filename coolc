@@ -1,2 +1,6 @@
 #/bin/bash
-python src/driver.py $@
+
+# Otherwise yacc will generate the parse tables every time this script runs:
+cd src 
+
+python driver.py $@
