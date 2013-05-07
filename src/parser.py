@@ -8,7 +8,6 @@ from error import *
 def p_program(p):
 	"program : classdecls"
 	p[0] = Document(*p[1])
-	p[0].display()
 
 
 def p_error(p):

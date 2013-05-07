@@ -4,13 +4,22 @@ from parser import yacc
 from error import *
 
 
-USAGE = "usage: %s [INPUT_FILE]" % sys.argv[0]
+USAGE = """usage: %s <INPUT FILE> (<OUTPUT FORMAT>)
+
+  By default, the output format is JSON.  "Parens" may also be used for an 
+  indented, parenthesized-style format.
+""" % sys.argv[0]
 
 if __name__ == "__main__":
-	if len(sys.argv) != 2:
+	if len(sys.argv) not in (2, 3):
 		sys.exit(USAGE)
 
 	filename = sys.argv[1]
+
+	try:
+		style = sys.argv[2].lower()
+	except IndexError:	
+		style = 'json'
 
 	try:
 		f = open(filename,'U')
@@ -24,7 +33,8 @@ if __name__ == "__main__":
 	Error.input = text
 
 	try:
-		yacc.parse(text, lexer=lex)
+		tree = yacc.parse(text, lexer=lex)
+		print tree.pretty(0, style)
 	except TokenError, e:
 		e.display()
 		sys.exit("Failed with %d error%s." % (Error.errors, '' if Error.errors == 1 else 's'))
@@ -38,7 +48,9 @@ if __name__ == "__main__":
 		sys.stderr
 
 
-	print "Parsing complete. Encountered %d error%s." % (Error.errors, '' if Error.errors == 1 else 's')
+	print "Parsing complete. Encountered %d error%s." % (
+		Error.errors, '' if Error.errors == 1 else 's'
+	)
 
 
 
