@@ -1,6 +1,3 @@
 #/bin/bash
 
-# Otherwise yacc will generate the parse tables every time this script runs:
-cd src 
-
-python driver.py $@
+python src/driver.py $@
