@@ -5,10 +5,17 @@ Spring 2013
 
 Compiler for the Cool language for the University of Oregon spring 2013 compilers
 class. This is not yet a full compiler.  Currently, it lexes the input file and 
-creates an abstract syntax tree.
+creates an abstract syntax tree, and prints that tree in JSON.
+
+Note that on the first run, a message saying that the parse tree was generated
+will be output along with the JSON.
 
 
-Usage: ./cool [FILE_INPUT]
+Usage: ./cool <FILE_INPUT> (<OUTPUT FORMAT>)
+
+  By default, the output format is JSON.  "Parens" may also be used for an 
+  indented, parenthesized-style format. 
+
 
 Contents:
   src/       - Contains source code
@@ -16,7 +23,7 @@ Contents:
   | ply/       - The PLY library (so you don't have to install it!)
   |
   | driver.py  - The driver file.  Takes a cool file as input, and runs the lexer
-  |              and parser on the file
+  |              and parser on the file.
   |
   | error.py   - Contains exceptions for error handling.  Includes the 
   |              calculation of columns for error reporting
@@ -25,7 +32,8 @@ Contents:
   |              "Extended Cool" reserved words
   |
   | parser.py  - Contains grammar rules and builds an abstract syntax tree using
-  |              nodes from tree.py
+  |              nodes from tree.py.  The yacc script generates a parse table on 
+	|              its first run.
   |
   | tree.py    - Class definitions for the AST nodes, including methods to print 
   |              the tree.
