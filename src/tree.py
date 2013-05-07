@@ -5,9 +5,9 @@ class Node(object):
 	STRINGS = {
 		"json": {
 			"empty": "[]",
-			"separator": ",\n",
-			"wrapper": "[\n%(children)s\n%(tab_inner)s]",
-			"parent": "%(tab)s{\n%(tab_inner)s\"%(type)s\": %(children)s \n%(tab)s}"
+			"separator": ", ",
+			"wrapper": "[%(children)s]",
+			"parent": "{\"%(type)s\" : %(children)s}"
 		},
 		"parens": {
 			"empty": "()",
@@ -202,8 +202,10 @@ class Symbol(Node):
 	def pretty(self, depth=0, style="parens"):
 		if style == "parens":
 			return '%s%s("%s")' % (self.TAB*depth, self.TYPE, self.name)
-		else: 
-			return '%s{"%s":"%s"}' % (self.TAB*depth, self.TYPE, self.name)
+		elif style == "json":
+			return '{"%s":"%s"}' % (self.TYPE, self.name)
+
+		return super(Literal, self).pretty(depth, style)
 
 class Identifier(Symbol):
 	TYPE = "id"
@@ -215,8 +217,10 @@ class Literal(UnaryPrimary):
 	def pretty(self, depth=0, style="parens"):
 		if style == "parens":
 			return self.TAB*depth + repr(self.value)
-		else:
-			return '%s%s' % (self.TAB*depth, self.rep())
+		elif style == "json":
+			return '%s' % self.rep()
+
+		return super(Literal, self).pretty(depth, style)
 
 class Integer(Literal):
 	TYPE = "integer"
