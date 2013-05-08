@@ -42,12 +42,20 @@ class Node(object):
 					else self.TAB*(depth+1) + repr(child) for child in self.children
 			])
 			children = texts['wrapper'] % {'children':children, 'tab_inner': tinner, 'tab': t}
-		return  texts['parent'] % {
+		out = texts['parent'] % {
 				'type' : self.TYPE,
 				'tab' : t,
 				'tab_inner' : tinner,
 				'children' : children
 			}
+
+		# Escape backslashes in JSON... and make sure to keep double quotes escaped for JSON.
+		if depth == 0 and style == "json":
+			import re
+			regex = re.compile(r'\\(.)')
+			out = regex.sub(lambda m: r'\\\"' if m.group(1) == '"' else r'\\' + m.group(1), out)
+
+		return out
 	
 	def display(self):
 		print str(self)
