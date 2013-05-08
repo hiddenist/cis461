@@ -45,6 +45,8 @@ def p_classopts(p):
 	"""
 
 	if len(p) > 2:
+		p[0] = ClassOpts(Native())
+	if len(p) > 3:
 		p[0] = ClassOpts(*p[2:])
 	else:
 		pass
@@ -277,7 +279,7 @@ def p_match(p):
 
 def p_cases(p):
 	"cases : '{' case_list '}'"
-	p[0] = p[1]
+	p[0] = p[2]
 
 def p_case_list(p):
 	"""
@@ -295,9 +297,9 @@ def p_case(p):
 		| CASE NULL ARROW block
 	"""
 	if len(p) == 7:
-		p[0] = Case(p[2], p[4], p[5])
+		p[0] = Case(p[2], p[4], p[6])
 	else:
-		p[0] = Case(None, Null(), p[4])
+		p[0] = Case(Null(), Null(), p[4])
 
 def p_match_comparison(p):
 	"match : comparison"
