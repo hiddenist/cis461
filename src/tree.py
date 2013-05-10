@@ -1,3 +1,9 @@
+from error import TypeCheckError, Error
+from symbols import SymbolTable
+
+UNINSTANTIABLE_TYPES = ('Any', 'Int', 'Unit', 'Boolean', 'Symbol')
+symbolTable = SymbolTable()
+
 class Node(object):
 	TYPE = "node"
 	TAB = '    '
@@ -17,7 +23,7 @@ class Node(object):
 		}
 	}
 
-	def __init__(self, *children):
+	def __init__(self, children, token=None):
 		self.children = children
 
 	def __getitem__(self, idx):
@@ -71,9 +77,9 @@ class Class(Node):
 		self.options = options
 		self.body = body
 		if options is None:
-			super(Class, self).__init__(type, formals, body)
+			super(Class, self).__init__([type, formals, body])
 		else:
-			super(Class, self).__init__(type, formals, options, body)
+			super(Class, self).__init__([type, formals, options, body])
 
 class List(Node):
 	TYPE = "list"
@@ -89,10 +95,21 @@ class Actuals(List):
 
 class Block(Node):
 	TYPE = "block"
-	def __init__(self, value = None, contents = []):
+	def __init__(self, value, contents = []):
 		self.value = value
 		self.contents = contents
-		super(Block, self).__init__(value, *contents)
+		super(Block, self).__init__(*contents+[value])
+
+	def getType(self):
+		return self.value.getType()
+
+	def evaluate(self):
+		symbolTable.enterScope()
+		for line in contents:
+			line.evaluate()
+		val = self.value.evaluate()
+		symbolTable.exitScope()
+		return val
 
 class Expr(Node):
 	TYPE = "expr"
@@ -102,7 +119,7 @@ class MatchExpr(Expr):
 	def __init__(self, expr, cases):
 		self.expr = expr
 		self.cases = cases
-		super(MatchExpr, self).__init__(expr, *cases)
+		super(MatchExpr, self).__init__([expr] + *cases)
 
 class Case(Node):
 	TYPE = "case"
@@ -110,7 +127,7 @@ class Case(Node):
 		self.id = id
 		self.type = type
 		self.block = block
-		super(Case, self).__init__(id, type, block)
+		super(Case, self).__init__([id, type, block])
 
 class IfExpr(Expr):
 	TYPE = "if"
@@ -118,38 +135,64 @@ class IfExpr(Expr):
 		self.cond = cond
 		self.true = true
 		self.false = false
-		super(IfExpr, self).__init__(cond, true, false)
+		super(IfExpr, self).__init__([cond, true, false])
 
 class WhileExpr(Expr):
 	TYPE = "while"
 	def __init__(self, cond, control):
 		self.cond = cond
 		self.control = control
-		super(WhileExpr, self).__init__(cond, control)
+		super(WhileExpr, self).__init__([cond, control])
+
+	def getType(self):
+		return Type("Unit")
+
+	def evaluate(self):
+		if not self.cond.getType().is("Boolean"):
+			raise TypeCheckError("Loop condition must be a boolean")
+		pass
 
 class Dot(Node):
 	TYPE = "dot"
 	def __init__(self, parent, child):
 		self.parent = parent
 		self.child = child
-		super(Dot, self).__init__(parent, child)
+		super(Dot, self).__init__([parent, child])
 
 class BinaryExpr(Expr):
 	def __init__(self, left, right):
 		self.left = left
 		self.right = right
-		super(BinaryExpr, self).__init__(left, right)
+		super(BinaryExpr, self).__init__([left, right])
 
 class UnaryExpr(Expr):
 	def __init__(self, arg):
 		self.arg = arg
-		super(UnaryExpr, self).__init__(arg)
+		super(UnaryExpr, self).__init__([arg])
 
 class AssignExpr(BinaryExpr):
 	TYPE = "assign"
 
+	def getType(self):
+		return Type("Unit")
+
+	def evaluate(self):
+		ltype = symbolTable.getVar(self.left)
+		rtype = self.right.getType()
+		if not rtype.subsetOf(ltype):
+			raise TypeCheckError("Type '%s' can not be assigned to variable of type '%s'" 
+				% (rtype, ltype))
+
 class LTExpr(BinaryExpr):
 	TYPE = "lt"
+
+	def getType(self):
+		return Type("Boolean")
+
+	def evaluate(self):
+		ltype = self.left.getType()
+		rtype = self.right.getType()
+		
 
 class LEExpr(BinaryExpr):
 	TYPE = "le"
@@ -183,7 +226,7 @@ class Call(Primary):
 	def __init__(self, type, actuals):
 		self.type = type
 		self.actuals = actuals
-		super(Call, self).__init__(type, actuals)
+		super(Call, self).__init__([type, actuals])
 
 class Super(Call):
 	TYPE = "super"
@@ -193,22 +236,26 @@ class NullaryPrimary(Primary):
 
 class Null(NullaryPrimary):
 	TYPE = "null"
+	def getType():
+		return Type("Null")
 
 class This(NullaryPrimary):
 	TYPE = "this"
 
 class Unit(NullaryPrimary):
 	TYPE = "unit"
+	def getType():
+		return Type("Unit")
 
 class UnaryPrimary(Primary):
 	def __init__(self, value):
 		self.value = value
-		super(UnaryPrimary, self).__init__(value)
+		super(UnaryPrimary, self).__init__([value])
 
 class Symbol(Node):
 	def __init__(self, name):
 		self.name = name
-		super(Symbol, self).__init__(name)
+		super(Symbol, self).__init__([name])
 
 	def pretty(self, depth=0, style="parens"):
 		if style == "parens":
@@ -225,6 +272,9 @@ class Literal(UnaryPrimary):
 	def rep(self):
 		return repr(self.value)
 
+	def getType(self):
+		return Type(self.CLASSTYPE)
+
 	def pretty(self, depth=0, style="parens"):
 		if style == "parens":
 			return self.TAB*depth + repr(self.value)
@@ -235,15 +285,18 @@ class Literal(UnaryPrimary):
 
 class Integer(Literal):
 	TYPE = "integer"
+	CLASSTYPE = "Int"
 
 class Boolean(Literal):
 	TYPE = "boolean"
+	CLASSTYPE = "Boolean"
 
 	def rep(self):
 		return "true" if self.value else "false"
 
 class String(Literal):
 	TYPE = "string"
+	CLASSTYPE = "String"
 
 	def rep(self):
 		# All just to print a double quoted raw string
@@ -258,12 +311,26 @@ class Actual(Node):
 class Type(Symbol):
 	TYPE = "type"
 
+	def is(self, t):
+		if isinstance(t, Type):
+			t = t.name
+		return self.name == t 
+
+	# Check if this type is a subset of another type using symbol tables...
+	def subsetOf(self, t):
+		# todo
+		print "Warning: not currently checking type compatibility"
+		return True
+
 class Constructor(Node):
 	TYPE = "constructor"
 	def __init__(self, type, actuals):
+		# Type check rule for new disallows the following types
+		if type in UNINSTANTIABLE_TYPES:
+			raise TypeCheckError("Objects of type '%s' are uninstantiable.")
 		self.type = type
 		self.actuals = actuals
-		super(Constructor, self).__init__(type, actuals)
+		super(Constructor, self).__init__([type, actuals])
 
 class Feature(Node):
 	TYPE = "feature"
@@ -298,5 +365,23 @@ class VarInit(Feature):
 		self.id = id
 		self.type = type
 		self.value = value
-		super(VarInit, self).__init__(id, type, value)
+		self.local = False
+		super(VarInit, self).__init__([id, type, value])
 
+	def setLocal(self):
+		self.local = True
+		return self
+
+	def getType(self):
+		return Type(self.type)
+	
+	def evaluate(self):
+		if self.local:
+			try:
+				symbolTable.getVar(self.id)
+				raise Error("Local block variables may not shadow; "
+					+"the variable '%s' is already in scope." % self.id)
+			except TypeCheckError:
+				pass
+
+		symbolTable.insertVar(self.id, Type(self.type))

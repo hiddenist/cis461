@@ -44,6 +44,9 @@ def p_classopts(p):
 		| EXTENDS type actuals
 	"""
 
+	if len(p) == 2:
+		# Intermediate: class C(F) { X } ==> class C(F) extends Any() { X }
+		p[0= ] ClassOpts(Type("Any"), Actuals()) 
 	if len(p) > 2:
 		p[0] = ClassOpts(Native())
 	if len(p) > 3:
@@ -176,7 +179,11 @@ def p_block(p):
 		| block_contents expr
 	"""
 	if len(p) == 2:
-		p[0] = Block()
+		# Intermediate: { } ==> ()
+		p[0] = Unit() 
+	elif len(p[1]) == 0:
+		# Intermediate: { e } ==> e
+		p[0] = p[2]  
 	else:
 		p[0] = Block(p[2], p[1])
 	
@@ -190,12 +197,12 @@ def p_block_contents(p):
 	else:
 		p[0] = p[1] + [p[2]]
 		
-def p_block_instr(p):
-	"""
-		block_instr : var_init
-			| expr
-	"""
-	p[0] = p[1]
+def p_block_instr_init(p):
+	"block_instr : var_init"
+	p[0] = p[1].setLocal()
+
+def p_block_instr_expr(p):
+	"block_instr : expr"
 
 def p_block_expr(p):
 	"block : expr"
@@ -299,7 +306,8 @@ def p_case(p):
 	if len(p) == 7:
 		p[0] = Case(p[2], p[4], p[6])
 	else:
-		p[0] = Case(Null(), Null(), p[4])
+		# Intermediate: case null => E ==> case null:Null => E
+		p[0] = Case(Null(), Type("Null"), p[4]) 
 
 def p_match_comparison(p):
 	"match : comparison"

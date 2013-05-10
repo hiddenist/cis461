@@ -10,6 +10,15 @@ class Error(Exception):
 
 	def display(self):
 		sys.stderr.write(str(self) + '\n')
+
+class TypeCheckError(Error):
+	def __init__(self, string, node=None):
+		super(TypeCheckError, self).__init__(string)
+		self.node = node
+
+	def display(self):
+		sys.stderr.write("Type error: ")
+		super(TypeCheckError, self).display()
 		
 class TokenError(Error):
 	def __init__(self, string, token=None):
