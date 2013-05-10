@@ -48,7 +48,7 @@ def p_classopts(p):
 		# Intermediate: class C(F) { X } ==> class C(F) extends Any() { X }
 		p[0] = ClassOpts(Type("Any", token=p), Actuals(token=p), token=p) 
 	if len(p) > 2:
-		p[0] = ClassOpts(Native(), token=p)
+		p[0] = ClassOpts(Native(token=p), Actuals(token=p), token=p)
 	if len(p) > 3:
 		p[0] = ClassOpts(p[2], p[3], token=p)
 	else:

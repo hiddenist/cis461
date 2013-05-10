@@ -11,20 +11,22 @@ class Error(Exception):
 	def display(self):
 		sys.stderr.write(str(self) + '\n')
 
-class TypeCheckError(Error):
-	def __init__(self, string, node=None):
-		super(TypeCheckError, self).__init__(string)
-		self.node = node
-
-	def display(self):
-		sys.stderr.write("Type error: ")
-		super(TypeCheckError, self).display()
+	def ignore(self):
+		"Remove this error from the error count"
+		Error.errors -= 1
+		self.errorno = None
 		
 class TokenError(Error):
 	def __init__(self, string, token=None):
 		super(TokenError, self).__init__(string)
+		self.setToken(token)
+
+	def setToken(self, token):
 		self.token = token
-		if token is not None:
+		if token is None:
+			self.lineno = None
+			self.lexpos = None
+		else:
 			self.lineno = token.lineno
 			self.lexpos = token.lexpos
 
@@ -72,3 +74,9 @@ class TokenError(Error):
 		if endline != next_cr: line = line[:-len(ellipsis)] + ellipsis
 
 		return (column, line, displaycolumn)
+
+class TypeCheckError(TokenError):
+	pass
+
+class SymbolError(TokenError):
+	pass

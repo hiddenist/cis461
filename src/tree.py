@@ -1,4 +1,4 @@
-from error import TypeCheckError, Error
+from error import Error, SymbolError, TypeCheckError
 from symbols import SymbolTable
 
 UNINSTANTIABLE_TYPES = ('Any', 'Int', 'Unit', 'Boolean', 'Symbol')
@@ -70,6 +70,10 @@ class Node(object):
 class Document(Node):
 	TYPE = "document"
 
+	def evaluate(self):
+		for c in self.children:
+			c.evaluate()
+
 class Class(Node):
 	TYPE = "class"
 	def __init__(self, type, formals, options, body, token=None):
@@ -77,10 +81,30 @@ class Class(Node):
 		self.formals = formals
 		self.options = options
 		self.body = body
+
+		try: 
+			symbolTable.insertClass(type, options.type)
+		except SymbolError, e:
+			e.setToken(token)
+			raise e
+			
+
 		if options is None:
 			super(Class, self).__init__([type, formals, body], token=token)
 		else:
 			super(Class, self).__init__([type, formals, options, body], token=token)
+
+class ClassBody(Node):
+	TYPE = "classbody"
+
+class ClassOpts(Node):
+	TYPE = "classopts"
+
+	def __init__(self, type, actuals, token=None):
+		self.type = type
+		self.actuals = actuals
+		super(ClassOpts, self).__init__([type, actuals], token=token)
+		
 
 class List(Node):
 	TYPE = "list"
@@ -305,6 +329,10 @@ class String(Literal):
 
 class Formal(Node):
 	TYPE = "formal"
+	def __init__(self, id, type, token=None):
+		self.id = id
+		self.type = type
+		super(Formal, self).__init__([id, type], token=token)
 
 class Actual(Node):
 	TYPE = "actual"
@@ -320,8 +348,8 @@ class Type(Symbol):
 	# Check if this type is a subset of another type using symbol tables...
 	def subsetOf(self, t):
 		# todo
-		print "Warning: not currently checking type compatibility"
-		return True
+		print "Warning: not currently checking inheritance"
+		return self.isType(t)
 
 class Constructor(Node):
 	TYPE = "constructor"
@@ -352,12 +380,6 @@ class Def(Feature):
 class Override(Node):
 	Type = "override"
 
-class ClassBody(Node):
-	TYPE = "classbody"
-
-class ClassOpts(Node):
-	TYPE = "classopts"
-
 class VarInit(Feature):
 	TYPE = "init"
 	def __init__(self, id, type, value, token=None):
@@ -378,9 +400,10 @@ class VarInit(Feature):
 		if self.local:
 			try:
 				symbolTable.getVar(self.id)
-				raise Error("Local block variables may not shadow; "
-					+"the variable '%s' is already in scope." % self.id)
-			except TypeCheckError:
-				pass
+			except SymbolError, e:
+				e.ignore()
+			else:
+				raise SymbolError("Local block variables may not shadow; "
+					+"the variable '%s' is already in scope." % self.id, self.token)
 
 		symbolTable.insertVar(self.id, Type(self.type))
