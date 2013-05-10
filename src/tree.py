@@ -23,8 +23,9 @@ class Node(object):
 		}
 	}
 
-	def __init__(self, children, token=None):
+	def __init__(self, children=[], token=None):
 		self.children = children
+		self.token = token
 
 	def __getitem__(self, idx):
 		return self.children[idx]
@@ -71,15 +72,15 @@ class Document(Node):
 
 class Class(Node):
 	TYPE = "class"
-	def __init__(self, type, formals, options, body):
+	def __init__(self, type, formals, options, body, token=None):
 		self.type = type
 		self.formals = formals
 		self.options = options
 		self.body = body
 		if options is None:
-			super(Class, self).__init__([type, formals, body])
+			super(Class, self).__init__([type, formals, body], token=token)
 		else:
-			super(Class, self).__init__([type, formals, options, body])
+			super(Class, self).__init__([type, formals, options, body], token=token)
 
 class List(Node):
 	TYPE = "list"
@@ -95,10 +96,10 @@ class Actuals(List):
 
 class Block(Node):
 	TYPE = "block"
-	def __init__(self, value, contents = []):
+	def __init__(self, value, contents = [], token=None):
 		self.value = value
 		self.contents = contents
-		super(Block, self).__init__(*contents+[value])
+		super(Block, self).__init__( contents + [value], token=token)
 
 	def getType(self):
 		return self.value.getType()
@@ -116,59 +117,59 @@ class Expr(Node):
 
 class MatchExpr(Expr):
 	TYPE = "match"
-	def __init__(self, expr, cases):
+	def __init__(self, expr, cases, token=None):
 		self.expr = expr
 		self.cases = cases
-		super(MatchExpr, self).__init__([expr] + *cases)
+		super(MatchExpr, self).__init__([expr] + cases, token=token)
 
 class Case(Node):
 	TYPE = "case"
-	def __init__(self, id, type, block):
+	def __init__(self, id, type, block, token=None):
 		self.id = id
 		self.type = type
 		self.block = block
-		super(Case, self).__init__([id, type, block])
+		super(Case, self).__init__([id, type, block], token=token)
 
 class IfExpr(Expr):
 	TYPE = "if"
-	def __init__(self, cond, true, false):
+	def __init__(self, cond, true, false, token=None):
 		self.cond = cond
 		self.true = true
 		self.false = false
-		super(IfExpr, self).__init__([cond, true, false])
+		super(IfExpr, self).__init__([cond, true, false], token=token)
 
 class WhileExpr(Expr):
 	TYPE = "while"
-	def __init__(self, cond, control):
+	def __init__(self, cond, control, token=None):
 		self.cond = cond
 		self.control = control
-		super(WhileExpr, self).__init__([cond, control])
+		super(WhileExpr, self).__init__([cond, control], token=token)
 
 	def getType(self):
 		return Type("Unit")
 
 	def evaluate(self):
-		if not self.cond.getType().is("Boolean"):
+		if not self.cond.getType().isType("Boolean"):
 			raise TypeCheckError("Loop condition must be a boolean")
 		pass
 
 class Dot(Node):
 	TYPE = "dot"
-	def __init__(self, parent, child):
+	def __init__(self, parent, child, token=None):
 		self.parent = parent
 		self.child = child
-		super(Dot, self).__init__([parent, child])
+		super(Dot, self).__init__([parent, child], token=token)
 
 class BinaryExpr(Expr):
-	def __init__(self, left, right):
+	def __init__(self, left, right, token=None):
 		self.left = left
 		self.right = right
-		super(BinaryExpr, self).__init__([left, right])
+		super(BinaryExpr, self).__init__([left, right], token=token)
 
 class UnaryExpr(Expr):
-	def __init__(self, arg):
+	def __init__(self, arg, token=None):
 		self.arg = arg
-		super(UnaryExpr, self).__init__([arg])
+		super(UnaryExpr, self).__init__([arg], token=token)
 
 class AssignExpr(BinaryExpr):
 	TYPE = "assign"
@@ -223,10 +224,10 @@ class Primary(Node):
 
 class Call(Primary):
 	TYPE = "call"
-	def __init__(self, type, actuals):
+	def __init__(self, type, actuals, token=None):
 		self.type = type
 		self.actuals = actuals
-		super(Call, self).__init__([type, actuals])
+		super(Call, self).__init__([type, actuals], token=token)
 
 class Super(Call):
 	TYPE = "super"
@@ -248,14 +249,14 @@ class Unit(NullaryPrimary):
 		return Type("Unit")
 
 class UnaryPrimary(Primary):
-	def __init__(self, value):
+	def __init__(self, value, token=None):
 		self.value = value
-		super(UnaryPrimary, self).__init__([value])
+		super(UnaryPrimary, self).__init__([value], token=token)
 
 class Symbol(Node):
-	def __init__(self, name):
+	def __init__(self, name, token=None):
 		self.name = name
-		super(Symbol, self).__init__([name])
+		super(Symbol, self).__init__([name], token=token)
 
 	def pretty(self, depth=0, style="parens"):
 		if style == "parens":
@@ -311,7 +312,7 @@ class Actual(Node):
 class Type(Symbol):
 	TYPE = "type"
 
-	def is(self, t):
+	def isType(self, t):
 		if isinstance(t, Type):
 			t = t.name
 		return self.name == t 
@@ -324,34 +325,32 @@ class Type(Symbol):
 
 class Constructor(Node):
 	TYPE = "constructor"
-	def __init__(self, type, actuals):
+	def __init__(self, type, actuals, token=None):
 		# Type check rule for new disallows the following types
 		if type in UNINSTANTIABLE_TYPES:
 			raise TypeCheckError("Objects of type '%s' are uninstantiable.")
 		self.type = type
 		self.actuals = actuals
-		super(Constructor, self).__init__([type, actuals])
+		super(Constructor, self).__init__([type, actuals], token=token)
 
 class Feature(Node):
 	TYPE = "feature"
 
 class Def(Feature):
 	TYPE = "def"
-	def __init__(self, override, id, formals, type, value):
+	def __init__(self, override, id, formals, type, value, token=None):
 		self.override = override
 		self.id = id
 		self.formals = formals
 		self.type = type
 		self.value = value
 		if override:
-			super(Def, self).__init__(Override(), id, formals, type, value)
+			super(Def, self).__init__([Override(), id, formals, type, value], token=token)
 		else:
-			super(Def, self).__init__(id, formals, type, value)
+			super(Def, self).__init__([id, formals, type, value], token=token)
 
 class Override(Node):
 	Type = "override"
-	def __init__(self):
-		super(Override, self).__init__()
 
 class ClassBody(Node):
 	TYPE = "classbody"
@@ -361,12 +360,12 @@ class ClassOpts(Node):
 
 class VarInit(Feature):
 	TYPE = "init"
-	def __init__(self, id, type, value):
+	def __init__(self, id, type, value, token=None):
 		self.id = id
 		self.type = type
 		self.value = value
 		self.local = False
-		super(VarInit, self).__init__([id, type, value])
+		super(VarInit, self).__init__([id, type, value], token=token)
 
 	def setLocal(self):
 		self.local = True
