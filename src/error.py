@@ -1,8 +1,9 @@
 import sys
+import settings
 
 class Error(Exception):
 	errors = 0
-	MAX_ERRORS = 10
+	MAX_ERRORS = settings.MAX_ERRORS
 	def __init__(self, string):
 		super(Error, self).__init__(string)
 		Error.errors += 1

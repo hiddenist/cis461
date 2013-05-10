@@ -2,7 +2,7 @@ import ply.yacc as yacc
 from lexer import tokens
 from tree import *
 from error import *
-from driver import DEBUG
+from settings import PARSE_DEBUG as DEBUG
 
 # Starting grammar rule goes first in the file
 def p_program(p):

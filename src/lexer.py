@@ -1,6 +1,6 @@
 import ply.lex as lex
 from error import *
-from driver import DEBUG
+from settings import LEX_DEBUG as DEBUG
 
 # Keyword tokens
 keywords = {

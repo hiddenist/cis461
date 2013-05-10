@@ -1,6 +1,5 @@
 import sys
-
-DEBUG = False
+from settings import DEBUG
 
 USAGE = """usage: %s <INPUT FILE> (<OUTPUT FORMAT>)
 
