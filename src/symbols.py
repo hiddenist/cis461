@@ -2,9 +2,9 @@ from error import SymbolError
 
 class SymbolTable(object):
 	def __init__(self):
-		O = [{}]
-		M = {}
-		C = {'Any': None}
+		self.O = [{}]
+		self.M = {}
+		self.C = {'Any': None}
 
 	def enterScope(self):
 		self.O.append({})
@@ -38,4 +38,4 @@ class SymbolTable(object):
 		self.C[c] = S
 
 	def getClass(self, c):
-		return self.[C]
+		return self.C[c]
