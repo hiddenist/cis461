@@ -31,7 +31,7 @@ class SymbolTable(object):
 		try:
 			return self.M[(C, f)]
 		except KeyError:
-			raise SymbolError("Method '%s.%s' is not defined" % (C, f))
+			raise SymbolError("Class '%s' does not have a method '%s'" % (C, f))
 
 	def insertVar(self, v, T):
 		self.O[-1][v] = T

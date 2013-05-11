@@ -2,6 +2,7 @@ from error import Error, SymbolError, TypeCheckError
 from symbols import SymbolTable
 
 UNINSTANTIABLE_TYPES = ('Any', 'Int', 'Unit', 'Boolean', 'Symbol')
+NOT_NULLABLE_TYPES = ('Nothing', 'Boolean', 'Int', 'Unit')
 symbolTable = SymbolTable()
 
 class Node(object):
@@ -177,6 +178,10 @@ class Dot(Node):
 		self.child = child
 		super(Dot, self).__init__([parent, child], token=token)
 
+	def getType(self):
+		print "Uninitialized"
+		return Type("Null")
+
 class BinaryExpr(Expr):
 	def __init__(self, left, right, token=None):
 		self.left = left
@@ -278,7 +283,7 @@ class NullaryPrimary(Primary):
 
 class Null(NullaryPrimary):
 	TYPE = "null"
-	def getType():
+	def getType(self):
 		return Type("Null")
 
 class This(NullaryPrimary):
@@ -396,9 +401,14 @@ class Type(Symbol):
 
 	def subsetOf(self, t):
 		"Checks compatibility between types"
-		# Check if this class or any of its ancestors match the provided type
 		c = self.name
 
+		if c == "Null":
+			if isinstance(t, Type):
+				t = t.name
+			return t not in NOT_NULLABLE_TYPES
+
+		# Check if this class or any of its ancestors match the provided type
 		while c is not None: # Any is the only class with no supertype
 			c = Type(c)
 			if c.isType(t):
