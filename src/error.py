@@ -24,27 +24,29 @@ class TokenError(Error):
 
 	def setToken(self, token):
 		self.token = token
-		if token is None:
-			self.lineno = None
-			self.lexpos = None
-		else:
+		if hasattr(token, 'lineno') and hasattr(token, 'lexpos'):
 			self.lineno = token.lineno
 			self.lexpos = token.lexpos
+		else:
+			self.lineno = None
+			self.lexpos = None
 
 	def display(self):
 		sys.stderr.write("\n(%d) Error encountered" % self.errorno)
-		if self.token is not None:
+		if self.token is not None and self.lineno and self.lexpos:
 			col, line, displaycol = self.line_info()
 			sys.stderr.write(" (%s: line %d col %d):\n" % (Error.filename, self.lineno, col))
 			sys.stderr.write(line)
 			sys.stderr.write('\n'+(' '*(displaycol-1))+'^\n')
 		else:
-			sys.stderr.write(':')
+			sys.stderr.write(': ')
 		sys.stderr.write(str(self))
 		sys.stderr.write('\n\n')
 
 	@staticmethod
 	def find_column(lexpos):
+		if not lexpos:
+			return 0
 		last_cr = Error.input.rfind('\n',0,lexpos)
 		column = (lexpos - last_cr)
 		return column

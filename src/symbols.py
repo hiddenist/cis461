@@ -1,10 +1,17 @@
 from error import SymbolError
+from settings import SYMBOL_DEBUG as DEBUG
 
 class SymbolTable(object):
 	def __init__(self):
 		self.O = [{}]
 		self.M = {}
-		self.C = {'Any': None}
+		self.C = {
+			'Any': None,
+			'String' : 'Any',
+			'Int' : 'Any',
+			'Boolean' : 'Any',
+			'Null' : 'Any',
+		}
 
 	def enterScope(self):
 		self.O.append({})
@@ -34,8 +41,12 @@ class SymbolTable(object):
 
 	def insertClass(self, c, S):
 		if c in self.C:
-			raise SymbolError("Class name '%s' is already defined") 
+			raise SymbolError("Class name '%s' is already defined")
 		self.C[c] = S
 
 	def getClass(self, c):
-		return self.C[c]
+		try:
+			return self.C[c]
+		except KeyError:
+			if DEBUG: print type(c), self.C
+			raise SymbolError("Type '%s' does not exist" % c)

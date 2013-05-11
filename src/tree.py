@@ -27,6 +27,10 @@ class Node(object):
 		self.children = children
 		self.token = token
 
+	def evaluate(self):
+		for child in self.children:
+			child.evaluate()
+
 	def __getitem__(self, idx):
 		return self.children[idx]
 
@@ -70,10 +74,6 @@ class Node(object):
 class Document(Node):
 	TYPE = "document"
 
-	def evaluate(self):
-		for c in self.children:
-			c.evaluate()
-
 class Class(Node):
 	TYPE = "class"
 	def __init__(self, type, formals, options, body, token=None):
@@ -81,18 +81,11 @@ class Class(Node):
 		self.formals = formals
 		self.options = options
 		self.body = body
+		self.superclass = options.type
 
-		try: 
-			symbolTable.insertClass(type, options.type)
-		except SymbolError, e:
-			e.setToken(token)
-			raise e
-			
+		type.define(self.superclass)
 
-		if options is None:
-			super(Class, self).__init__([type, formals, body], token=token)
-		else:
-			super(Class, self).__init__([type, formals, options, body], token=token)
+		super(Class, self).__init__([type, formals, options, body], token=token)
 
 class ClassBody(Node):
 	TYPE = "classbody"
@@ -104,7 +97,6 @@ class ClassOpts(Node):
 		self.type = type
 		self.actuals = actuals
 		super(ClassOpts, self).__init__([type, actuals], token=token)
-		
 
 class List(Node):
 	TYPE = "list"
@@ -130,7 +122,7 @@ class Block(Node):
 
 	def evaluate(self):
 		symbolTable.enterScope()
-		for line in contents:
+		for line in self.contents:
 			line.evaluate()
 		val = self.value.evaluate()
 		symbolTable.exitScope()
@@ -173,6 +165,7 @@ class WhileExpr(Expr):
 		return Type("Unit")
 
 	def evaluate(self):
+		super(WhileExpr, self).evaluate()
 		if not self.cond.getType().isType("Boolean"):
 			raise TypeCheckError("Loop condition must be a boolean")
 		pass
@@ -202,28 +195,51 @@ class AssignExpr(BinaryExpr):
 		return Type("Unit")
 
 	def evaluate(self):
-		ltype = symbolTable.getVar(self.left)
+		super(AssignExpr, self).evaluate()
+
+		ltype = self.left.getType()
 		rtype = self.right.getType()
+
 		if not rtype.subsetOf(ltype):
 			raise TypeCheckError("Type '%s' can not be assigned to variable of type '%s'" 
 				% (rtype, ltype))
 
-class LTExpr(BinaryExpr):
-	TYPE = "lt"
-
+class CompExpr(BinaryExpr):
 	def getType(self):
 		return Type("Boolean")
+
+class IntCompExpr(CompExpr):
+	def evaluate(self):
+		super(IntCompExpr, self).evaluate()
+
+		ltype = self.left.getType()
+		rtype = self.right.getType()
+
+		if not ltype.isType("Int") or not rtype.isType("Int"):
+			raise TypeCheckError("Cannot compare '%s' to '%s'; both must be Int" 
+				% (ltype, rtype), self.token)
+
+		
+
+class LTExpr(IntCompExpr):
+	TYPE = "lt"
+
+class LEExpr(IntCompExpr):
+	TYPE = "le"
+
+class EqExpr(CompExpr):
+	TYPE = "equals"
+
+class ArithExpr(BinaryExpr):
+	def getType(self):
+		return Type("Int")
 
 	def evaluate(self):
 		ltype = self.left.getType()
 		rtype = self.right.getType()
-		
-
-class LEExpr(BinaryExpr):
-	TYPE = "le"
-
-class EqExpr(BinaryExpr):
-	TYPE = "equals"
+		if not ltype.isType("Int") or not rtype.isType("Int"):
+			raise TypeCheckError("Cannot apply arithmetic operation to types '%s' and '%s'; both must be Int" 
+				% (ltype, rtype), self.token)
 
 class AddExpr(BinaryExpr):
 	TYPE = "add"
@@ -257,7 +273,8 @@ class Super(Call):
 	TYPE = "super"
 
 class NullaryPrimary(Primary):
-	pass
+	def __init__(self, token=None):
+		super(NullaryPrimary, self).__init__(token=token)
 
 class Null(NullaryPrimary):
 	TYPE = "null"
@@ -290,8 +307,17 @@ class Symbol(Node):
 
 		return super(Literal, self).pretty(depth, style)
 
+	def evaluate(self):
+		pass
+
 class Identifier(Symbol):
 	TYPE = "id"
+
+	def getType(self):
+		return Type(symbolTable.getVar(self.name))
+
+	def define(self, type):
+		symbolTable.insertVar(self.name, type.name)
 
 class Literal(UnaryPrimary):
 	def rep(self):
@@ -307,6 +333,9 @@ class Literal(UnaryPrimary):
 			return self.rep()
 
 		return super(Literal, self).pretty(depth, style)
+
+	def evaluate(self):
+		pass
 
 class Integer(Literal):
 	TYPE = "integer"
@@ -334,22 +363,49 @@ class Formal(Node):
 		self.type = type
 		super(Formal, self).__init__([id, type], token=token)
 
+	def evaluate(self):
+		self.id.define(self.type)
+
 class Actual(Node):
 	TYPE = "actual"
 
 class Type(Symbol):
 	TYPE = "type"
 
+	def __str__(self):
+		return self.name
+
+	def define(self, superclass):
+		try:
+			symbolTable.insertClass(self.name, superclass.name)
+		except SymbolError, e:
+			e.setToken(token)
+			raise e
+
+	def evaluate(self):
+		try:
+			symbolTable.getClass(self.name)
+		except SymbolError, e:
+			e.setToken(self.token)
+			raise e
+
 	def isType(self, t):
 		if isinstance(t, Type):
 			t = t.name
 		return self.name == t 
 
-	# Check if this type is a subset of another type using symbol tables...
 	def subsetOf(self, t):
-		# todo
-		print "Warning: not currently checking inheritance"
-		return self.isType(t)
+		"Checks compatibility between types"
+		# Check if this class or any of its ancestors match the provided type
+		c = self.name
+
+		while c is not None: # Any is the only class with no supertype
+			c = Type(c)
+			if c.isType(t):
+				return True
+			c = symbolTable.getClass(c.name)
+
+		return False
 
 class Constructor(Node):
 	TYPE = "constructor"
@@ -397,6 +453,7 @@ class VarInit(Feature):
 		return Type(self.type)
 	
 	def evaluate(self):
+		super(VarInit, self).evaluate()
 		if self.local:
 			try:
 				symbolTable.getVar(self.id)
@@ -406,4 +463,9 @@ class VarInit(Feature):
 				raise SymbolError("Local block variables may not shadow; "
 					+"the variable '%s' is already in scope." % self.id, self.token)
 
-		symbolTable.insertVar(self.id, Type(self.type))
+		valuetype = self.value.getType()
+		if not valuetype.subsetOf(self.type):
+			raise TypeCheckError("Value of type '%s' can't be assigned to variable of type '%s'"
+				% (valuetype, self.type), self.token)
+
+		self.id.define(self.type)

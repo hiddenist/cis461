@@ -36,6 +36,8 @@ if __name__ == "__main__":
 	try:
 		tree = yacc.parse(text, lexer=lex, debug=DEBUG)
 		print tree.pretty(0, style)
+		if DEBUG: print "---"
+		tree.evaluate()
 	except TokenError, e:
 		e.display()
 		sys.exit("Failed with %d error%s." % (Error.errors, '' if Error.errors == 1 else 's'))
