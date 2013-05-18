@@ -1,9 +1,9 @@
 from error import Error, SymbolError, TypeCheckError
-from symbols import SymbolTable
+from type_checking import Environment
 
 UNINSTANTIABLE_TYPES = ('Any', 'Int', 'Unit', 'Boolean', 'Symbol')
 NOT_NULLABLE_TYPES = ('Nothing', 'Boolean', 'Int', 'Unit')
-symbolTable = SymbolTable()
+env = Environment()
 
 class Node(object):
 	TYPE = "node"
@@ -122,11 +122,11 @@ class Block(Node):
 		return self.value.getType()
 
 	def evaluate(self):
-		symbolTable.enterScope()
+		env.enterScope()
 		for line in self.contents:
 			line.evaluate()
 		val = self.value.evaluate()
-		symbolTable.exitScope()
+		env.exitScope()
 		return val
 
 class Expr(Node):
@@ -319,10 +319,10 @@ class Identifier(Symbol):
 	TYPE = "id"
 
 	def getType(self):
-		return Type(symbolTable.getVar(self.name))
+		return Type(env.getVar(self.name))
 
 	def define(self, type):
-		symbolTable.insertVar(self.name, type.name)
+		env.insertVar(self.name, type.name)
 
 class Literal(UnaryPrimary):
 	def rep(self):
@@ -382,14 +382,14 @@ class Type(Symbol):
 
 	def define(self, superclass):
 		try:
-			symbolTable.insertClass(self.name, superclass.name)
+			env.insertClass(self.name, superclass.name)
 		except SymbolError, e:
 			e.setToken(token)
 			raise e
 
 	def evaluate(self):
 		try:
-			symbolTable.getClass(self.name)
+			env.getClass(self.name)
 		except SymbolError, e:
 			e.setToken(self.token)
 			raise e
@@ -403,17 +403,18 @@ class Type(Symbol):
 		"Checks compatibility between types"
 		c = self.name
 
+		# Null can be any type except for a few specified, built-in types
 		if c == "Null":
 			if isinstance(t, Type):
 				t = t.name
 			return t not in NOT_NULLABLE_TYPES
 
 		# Check if this class or any of its ancestors match the provided type
-		while c is not None: # Any is the only class with no supertype
+		while c is not None:
 			c = Type(c)
 			if c.isType(t):
 				return True
-			c = symbolTable.getClass(c.name)
+			c = env.getClass(c.name)
 
 		return False
 
@@ -466,7 +467,7 @@ class VarInit(Feature):
 		super(VarInit, self).evaluate()
 		if self.local:
 			try:
-				symbolTable.getVar(self.id)
+				env.getVar(self.id)
 			except SymbolError, e:
 				e.ignore()
 			else:

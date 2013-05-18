@@ -1,7 +1,7 @@
 from error import SymbolError
 from settings import SYMBOL_DEBUG as DEBUG
 
-class SymbolTable(object):
+class Environment(object):
 	def __init__(self):
 		self.O = [{}]
 		self.M = {}
@@ -10,7 +10,8 @@ class SymbolTable(object):
 			'String' : 'Any',
 			'Int' : 'Any',
 			'Boolean' : 'Any',
-			'Null' : 'Any',
+			'Null' : None,
+			'Nothing': None,
 		}
 
 	def enterScope(self):
