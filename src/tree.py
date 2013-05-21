@@ -1,8 +1,7 @@
 from error import Error, SymbolError, TypeCheckError
 from type_checking import Environment
+from type_checking import UNINSTANTIABLE_TYPES, NOT_NULLABLE_TYPES, UNINHERITABLE_TYPES
 
-UNINSTANTIABLE_TYPES = ('Any', 'Int', 'Unit', 'Boolean', 'Symbol')
-NOT_NULLABLE_TYPES = ('Nothing', 'Boolean', 'Int', 'Unit')
 env = Environment()
 
 class Node(object):
@@ -28,9 +27,9 @@ class Node(object):
 		self.children = children
 		self.token = token
 
-	def evaluate(self):
+	def typeCheck(self):
 		for child in self.children:
-			child.evaluate()
+			child.typeCheck()
 
 	def __getitem__(self, idx):
 		return self.children[idx]
@@ -121,11 +120,11 @@ class Block(Node):
 	def getType(self):
 		return self.value.getType()
 
-	def evaluate(self):
+	def typeCheck(self):
 		env.enterScope()
 		for line in self.contents:
-			line.evaluate()
-		val = self.value.evaluate()
+			line.typeCheck()
+		val = self.value.typeCheck()
 		env.exitScope()
 		return val
 
@@ -134,10 +133,47 @@ class Expr(Node):
 
 class MatchExpr(Expr):
 	TYPE = "match"
+
 	def __init__(self, expr, cases, token=None):
 		self.expr = expr
 		self.cases = cases
 		super(MatchExpr, self).__init__([expr] + cases, token=token)
+
+	def getType(self):
+		# Get the types of all of the cases...
+		# Should we disclude nulls from this?  Hmm...
+		types = [case.getType() for case in self.cases]
+
+		# Join the types... my understanding is that this is to find a common parent class
+		return env.typeJoin(*types)
+
+	def typeCheck(self):
+		types = []
+		nulls = 0
+		for case in self.cases:
+			t = case.getType()
+
+			if t.isNull():
+				if nulls:
+					raise TypeCheckError("More than one null case in match", self.token)
+				else:
+					nulls = 1
+					continue
+
+			for pt in types:
+				if t.subsetOf(pt):
+					raise TypeCheckError("Earlier case for type '%s' in match shadows type '%s'"
+							% (pt, t), case.token
+						)
+
+			types.append(t)
+
+		# Finally, compare the type of our match expression with all of the cases...
+		etype = self.expr.getType()
+		for t in types:
+			if not etype.subsetOf(t) and not t.subsetOf(etype):
+				raise TypeCheckError("Match expression of type '%s' is not compatible with case type '%s'"
+					% (etype, t), self.token)
 
 class Case(Node):
 	TYPE = "case"
@@ -146,6 +182,15 @@ class Case(Node):
 		self.type = type
 		self.block = block
 		super(Case, self).__init__([id, type, block], token=token)
+
+	def getType(self):
+		return self.type
+	
+	def typeCheck(self):
+		env.enterScope()
+		self.id.define(shadow=True)
+		self.block.typeCheck()
+		env.exitScope()
 
 class IfExpr(Expr):
 	TYPE = "if"
@@ -165,8 +210,8 @@ class WhileExpr(Expr):
 	def getType(self):
 		return Type("Unit")
 
-	def evaluate(self):
-		super(WhileExpr, self).evaluate()
+	def typeCheck(self):
+		super(WhileExpr, self).typeCheck()
 		if not self.cond.getType().isType("Boolean"):
 			raise TypeCheckError("Loop condition must be a boolean")
 		pass
@@ -199,8 +244,8 @@ class AssignExpr(BinaryExpr):
 	def getType(self):
 		return Type("Unit")
 
-	def evaluate(self):
-		super(AssignExpr, self).evaluate()
+	def typeCheck(self):
+		super(AssignExpr, self).typeCheck()
 
 		ltype = self.left.getType()
 		rtype = self.right.getType()
@@ -214,8 +259,8 @@ class CompExpr(BinaryExpr):
 		return Type("Boolean")
 
 class IntCompExpr(CompExpr):
-	def evaluate(self):
-		super(IntCompExpr, self).evaluate()
+	def typeCheck(self):
+		super(IntCompExpr, self).typeCheck()
 
 		ltype = self.left.getType()
 		rtype = self.right.getType()
@@ -239,7 +284,7 @@ class ArithExpr(BinaryExpr):
 	def getType(self):
 		return Type("Int")
 
-	def evaluate(self):
+	def typeCheck(self):
 		ltype = self.left.getType()
 		rtype = self.right.getType()
 		if not ltype.isType("Int") or not rtype.isType("Int"):
@@ -312,7 +357,7 @@ class Symbol(Node):
 
 		return super(Literal, self).pretty(depth, style)
 
-	def evaluate(self):
+	def typeCheck(self):
 		pass
 
 class Identifier(Symbol):
@@ -321,8 +366,17 @@ class Identifier(Symbol):
 	def getType(self):
 		return Type(env.getVar(self.name))
 
-	def define(self, type):
-		env.insertVar(self.name, type.name)
+	def define(self, type, shadow=False):
+		if not shadow:
+			try:
+				env.getVar(self.name)
+			except SymbolError, e:
+				e.ignore()
+			else:
+				raise SymbolError("The variable '%s' is already defined and may not shadow." % self.id, 
+					self.token)
+
+		env.defineVar(self.name, type.name)
 
 class Literal(UnaryPrimary):
 	def rep(self):
@@ -339,7 +393,7 @@ class Literal(UnaryPrimary):
 
 		return super(Literal, self).pretty(depth, style)
 
-	def evaluate(self):
+	def typeCheck(self):
 		pass
 
 class Integer(Literal):
@@ -368,7 +422,7 @@ class Formal(Node):
 		self.type = type
 		super(Formal, self).__init__([id, type], token=token)
 
-	def evaluate(self):
+	def typeCheck(self):
 		self.id.define(self.type)
 
 class Actual(Node):
@@ -380,16 +434,62 @@ class Type(Symbol):
 	def __str__(self):
 		return self.name
 
+	@staticmethod
+	def typeJoin(*types):
+		""" 
+			Find the common ancestor in a list of types.
+			Returns None if no such ancestor exists.
+		"""
+		if len(types) == 0:
+			return None
+
+		if len(types) == 1:
+			return types[0]
+
+		# Let's just compare the entire list to the last class in the list.
+		# For match statements, the last class should be the most general.
+		# However, if we choose a null case, choose the second to last.
+
+		# If this type join is used for more than just match statements, I really need to rethink this.
+
+		s = types.pop()
+		if s.isNull():
+			s, _ = types.pop(), types.append(s) 
+
+		found = False
+		while s is not None:
+			violated = False
+
+			for t in types:
+				if not t.subsetOf(s):
+					violated = True
+					break
+
+			if violated:
+				s = s.parent()
+			else:
+				return s
+
+		return None
+
+	def isNull(self):
+		return self.name == 'Null'
+
+	def parent(self):
+		return Type(env.getSuperClass(self.name))
+
 	def define(self, superclass):
+		if superclass in UNINHERITABLE_TYPES:
+			raise TypeCheckError("Class '%s' may not extend type '%s'" % (self.name, superclass), self.token)
 		try:
-			env.insertClass(self.name, superclass.name)
+			env.defineClass(self.name, superclass.name)
 		except SymbolError, e:
-			e.setToken(token)
+			e.setToken(self.token)
 			raise e
 
-	def evaluate(self):
+	def typeCheck(self):
 		try:
-			env.getClass(self.name)
+			env.getSuperClass(self.name)
 		except SymbolError, e:
 			e.setToken(self.token)
 			raise e
@@ -401,20 +501,19 @@ class Type(Symbol):
 
 	def subsetOf(self, t):
 		"Checks compatibility between types"
-		c = self.name
-
 		# Null can be any type except for a few specified, built-in types
-		if c == "Null":
+		if c.isNull():
 			if isinstance(t, Type):
 				t = t.name
 			return t not in NOT_NULLABLE_TYPES
 
+		c = self.name
 		# Check if this class or any of its ancestors match the provided type
 		while c is not None:
 			c = Type(c)
 			if c.isType(t):
 				return True
-			c = env.getClass(c.name)
+			c = env.getSuperClass(c.name)
 
 		return False
 
@@ -463,16 +562,8 @@ class VarInit(Feature):
 	def getType(self):
 		return Type(self.type)
 	
-	def evaluate(self):
-		super(VarInit, self).evaluate()
-		if self.local:
-			try:
-				env.getVar(self.id)
-			except SymbolError, e:
-				e.ignore()
-			else:
-				raise SymbolError("Local block variables may not shadow; "
-					+"the variable '%s' is already in scope." % self.id, self.token)
+	def typeCheck(self):
+		super(VarInit, self).typeCheck()
 
 		valuetype = self.value.getType()
 		if not valuetype.subsetOf(self.type):
