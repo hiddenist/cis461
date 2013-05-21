@@ -265,9 +265,15 @@ class IntCompExpr(CompExpr):
 		ltype = self.left.getType()
 		rtype = self.right.getType()
 
-		if not ltype.isType("Int") or not rtype.isType("Int"):
+		invalid = None
+		if not ltype.isType("Int"):
+			invalid = self.left
+		elif not rtype.isType("Int"):
+			invalue = self.right
+
+		if invalid:
 			raise TypeCheckError("Cannot compare '%s' to '%s'; both must be Int" 
-				% (ltype, rtype), self.token)
+				% (ltype, rtype), invalid.token)
 
 		
 
@@ -287,9 +293,16 @@ class ArithExpr(BinaryExpr):
 	def typeCheck(self):
 		ltype = self.left.getType()
 		rtype = self.right.getType()
-		if not ltype.isType("Int") or not rtype.isType("Int"):
-			raise TypeCheckError("Cannot apply arithmetic operation to types '%s' and '%s'; both must be Int" 
-				% (ltype, rtype), self.token)
+		invalid = None
+		if not ltype.isType("Int"):
+			invalid = self.left
+		elif not rtype.isType("Int"):
+			invalid = self.right
+
+		if invalid:
+			raise TypeCheckError("Cannot apply arithmetic operation to types "
+				+ "'%s' and '%s';" % (ltype, rtype)
+				+ " both must be Int" , invalid.token)
 
 class AddExpr(ArithExpr):
 	TYPE = "add"
