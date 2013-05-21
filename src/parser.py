@@ -213,6 +213,7 @@ def p_block_instr_init(p):
 
 def p_block_instr_expr(p):
 	"block_instr : expr"
+	p[0] = p[1]
 
 def p_block_expr(p):
 	"block : expr"
