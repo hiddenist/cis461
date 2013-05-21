@@ -291,16 +291,16 @@ class ArithExpr(BinaryExpr):
 			raise TypeCheckError("Cannot apply arithmetic operation to types '%s' and '%s'; both must be Int" 
 				% (ltype, rtype), self.token)
 
-class AddExpr(BinaryExpr):
+class AddExpr(ArithExpr):
 	TYPE = "add"
 
-class SubExpr(BinaryExpr):
+class SubExpr(ArithExpr):
 	TYPE = "subtract"
 
-class MultExpr(BinaryExpr):
+class MultExpr(ArithExpr):
 	TYPE = "multiply"
 
-class DivExpr(BinaryExpr):
+class DivExpr(ArithExpr):
 	TYPE = "divide"
 	
 class NotExpr(UnaryExpr):
@@ -502,7 +502,7 @@ class Type(Symbol):
 	def subsetOf(self, t):
 		"Checks compatibility between types"
 		# Null can be any type except for a few specified, built-in types
-		if c.isNull():
+		if self.isNull():
 			if isinstance(t, Type):
 				t = t.name
 			return t not in NOT_NULLABLE_TYPES
