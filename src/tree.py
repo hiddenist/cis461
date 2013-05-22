@@ -82,16 +82,20 @@ class Document(Node):
 
 class Class(Node):
 	TYPE = "class"
-	def __init__(self, type, formals, options, body, token=None):
-		self.type = type
+	def __init__(self, t, formals, options, body, token=None):
+		self.type = t
 		self.formals = formals
 		self.options = options
 		self.body = body
 		self.superclass = options.type
 
-		type.define(self.superclass)
+		self.type.define(self.superclass)
 
-		super(Class, self).__init__([type, formals, options, body], token=token)
+		for feature in self.body.children:
+			if type(feature) is Def:
+				feature.define(self.type.name)
+
+		super(Class, self).__init__([t, formals, options, body], token=token)
 
 	def typeCheck(self):
 		self.superclass.typeCheckOnce()
@@ -102,8 +106,6 @@ class Class(Node):
 			formal.id.attrDefine(self.type.name, formal.type.name)
 
 		for feature in self.body.children:
-			if type(feature) is Def:
-				feature.define(self.type.name)
 
 			if type(feature) is VarInit:
 				feature.id.attrDefine(self.type.name, feature.type.name)
@@ -690,9 +692,19 @@ class Def(Feature):
 			super(Def, self).__init__([id, formals, type, value], token=token)
 
 	def define(self, c):
+		self.c = c
+		# Just define it - don't type check since we can't yet anyways
 		args = tuple(f.name for f in self.formals.getType())
 		try:
-			super_method = env.getMethod(env.getSuperClass(c), self.id.name)
+			env.defineMethod(c, self.id.name, args + (self.type.name,))
+		except SymbolError, e:
+			e.setToken(self.token)
+			e.report()
+
+	def typeCheck(self):
+		args = tuple(f.name for f in self.formals.getType())
+		try:
+			super_method = env.getMethod(env.getSuperClass(self.c), self.id.name)
 			if self.override:
 				sargs = super_method[:-1]
 				if len(args) != len(sargs):
@@ -716,13 +728,6 @@ class Def(Feature):
 			else:
 				e.ignore()
 
-		try:
-			env.defineMethod(c, self.id.name, args + (self.type.name,))
-		except SymbolError, e:
-			e.setToken(self.token)
-			e.report()
-
-	def typeCheck(self):
 		env.enterScope()
 		
 		# Type checking the formals defines them, and allows shadowing

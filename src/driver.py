@@ -15,6 +15,8 @@ if __name__ == "__main__":
 	from error import *
 
 	def errorExit():
+		for e in Error.elist:
+			e.display()
 		sys.exit("Failed with %d error%s." % (Error.errors, '' if Error.errors == 1 else 's'))
 
 	if len(sys.argv) not in (2, 3):
@@ -53,6 +55,7 @@ if __name__ == "__main__":
 	except Error, e:
 		e.display()
 		errorExit()
+
 
 	state = lex.lexstate
 	if state in ('comment', 'string', 'longstring'):

@@ -13,11 +13,14 @@ class Environment(object):
 		self.O = []
 
 		# Methods and their parameter types
-		self.M = {
+		self.M = { # I'm just assuming these are some of the things built in types have
 			('String', 'charAt') : ('Int', 'Int'),
 			('String', 'concat') : ('String', 'String', 'String'),
 			('Any', 'toString') : ('String',),
-			('IO', 'out') : ('String', 'IO')
+			('Any', 'equals') : ('Any', 'Boolean'),
+			('IO', 'out') : ('String', 'IO'),
+			('ArrayAny', 'get') : ('Int', 'Any'),
+			('ArrayAny', 'set') : ('Int', 'Any', 'Any'),
 		}
 
 		# Classes and their superclasses
@@ -129,7 +132,6 @@ class Environment(object):
 				return self.M[(s, f)]
 			except KeyError:
 				s = self.getSuperClass(s)
-			
 		raise SymbolError("Class '%s' does not have a method '%s' defined" % (C, f))
 
 	def getSuperClass(self, c):
