@@ -87,6 +87,20 @@ class Class(Node):
 
 		super(Class, self).__init__([type, formals, options, body], token=token)
 
+	def typeCheck(self):
+		env.enterScope()
+
+		# Check all of the class attributes, either in the body or in the formals
+		for formal in self.formals.children:
+			formal.id.attrDefine(self.type.name)
+
+		for feature in self.body:
+			if type(feature) is VarInit:
+				feature.id.attrDefine(self.type.name)
+
+		super(Class, self).typeCheck()
+		env.exitScope()
+
 class ClassBody(Node):
 	TYPE = "classbody"
 

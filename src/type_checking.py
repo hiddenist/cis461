@@ -8,9 +8,14 @@ UNINHERITABLE_TYPES = ('Null', 'Nothing')
 
 class Environment(object):
 	def __init__(self):
-		self.O = [{}]
+		# Variables and their type, for each scope
+		self.O = []
+
+		# Methods and their parameter types
 		self.M = {}
-		self.C = {
+
+		# Classes and their superclasses
+		self.C = { # built-in types (for now?):
 			'Any': None,
 			'String' : 'Any',
 			'Int' : 'Any',
@@ -19,11 +24,36 @@ class Environment(object):
 			'Nothing': None,
 		}
 
+		# Class attributes (types stores in O)
+		self.Oc = {}
+
+		# For all of the built in types, initialize no params
+		for c in self.C:
+			self.Oc[c] = []
+
 	def enterScope(self):
 		self.O.append({})
 
 	def exitScope(self):
 		self.O.pop()
+
+	def defineAttr(self, c, v):
+		try:
+			self.hasAttr(c, v)
+		except SymbolError, e:
+			e.ignore()
+			self.Oc[c].append(v)
+		else:
+			raise SymbolError("Class '%s' attribute named '%s'" % (c, v)
+				+ "is already defined (perhaps in a superclass)")
+
+	def hasAttr(self, c, v):
+		orig = c
+		while c is not None:
+			if v in self.Oc[c]:
+				return True
+			c = self.getSuperClass(c)
+		raise SymbolError("Class '%s' has no attribute '%s'" % (c, v))
 
 	def defineVar(self, v, T):
 		# Get the current stack scope
@@ -40,6 +70,7 @@ class Environment(object):
 		if c in self.C:
 			raise SymbolError("Class name '%s' is already defined")
 		self.C[c] = S
+		self.Oc[c] = []
 
 	def getVar(self, v):
 		for d in reversed(self.O):
