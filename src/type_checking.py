@@ -1,5 +1,5 @@
 from error import SymbolError
-from settings import SYMBOL_DEBUG as DEBUG
+from settings import SYMBOL_DEBUG as DEBUG, SIMULATE_BASIC
 
 
 UNINSTANTIABLE_TYPES = ('Any', 'Int', 'Unit', 'Boolean', 'Symbol')
@@ -13,36 +13,65 @@ class Environment(object):
 		self.O = []
 
 		# Methods and their parameter types
-		self.M = { # I'm just assuming these are some of the things built in types have
-			('String', 'charAt') : ('Int', 'Int'),
-			('String', 'concat') : ('String', 'String', 'String'),
-			('Any', 'toString') : ('String',),
-			('Any', 'equals') : ('Any', 'Boolean'),
-			('IO', 'out') : ('String', 'IO'),
-			('ArrayAny', 'get') : ('Int', 'Any'),
-			('ArrayAny', 'set') : ('Int', 'Any', 'Any'),
-		}
+		self.M = {}
 
 		# Classes and their superclasses
-		self.C = { # built-in types (for now?):
-			'Any': None,
-			'Unit' : 'Any',
-			'Int' : 'Any',
-			'String' : 'Any',
-			'Boolean' : 'Any',
-			'ArrayAny' : 'Any',
-			'IO' : 'Any',
-			'Symbol' : 'Any',
-			'Null' : None,
+		self.C = {
 			'Nothing': None,
+			'Null' : None,
 		}
 
 		# Class attributes (types stores in O)
 		self.Oc = {}
 
-		# For all of the built in types, initialize no params
+		# For all of the special types above, initialize with no parameters
 		for c in self.C:
 			self.Oc[c] = {}
+
+		if SIMULATE_BASIC:
+			self.C['Any'] = None
+			self.C['Unit'] = 'Any'
+			self.C['Int'] = 'Any'
+			self.C['String'] = 'Any'
+			self.C['Boolean'] = 'Any'
+			self.C['ArrayAny'] = 'Any'
+			self.C['IO'] = 'Any'
+			self.C['Symbol'] = 'Any'
+			
+			for c in self.C:
+				self.Oc[c] = {}
+
+			self.M = { 
+				('Any', 'toString') : ('String',),
+				('Any', 'equals') : ('Any', 'Boolean',),
+				('IO', 'abort') : ('String', 'Nothing',),
+				('IO', 'out') : ('String', 'IO',),
+				('IO', 'is_null') : ('Any', 'Boolean',),
+				('IO', 'out_any') : ('Any', 'IO',),
+				('IO', 'in') : ('String',),
+				('IO', 'symbol') : ('String','Symbol',),
+				('IO', 'symbol_name') : ('Symbol','String',),
+				('String', 'length') : ('Int',),
+				('String', 'charAt') : ('Int', 'Int',),
+				('String', 'concat') : ('String', 'String', 'String',),
+				('String', 'substring') : ('Int', 'Int', 'String',),
+				('String', 'indexOf') : ('String', 'Int',),
+				('Symbol', 'hashCode'): ('Int',),
+				('ArrayAny', 'length') : ('Int',),
+				('ArrayAny', 'resize') : ('Int','AnyArray',),
+				('ArrayAny', 'get') : ('Int', 'Any',),
+				('ArrayAny', 'set') : ('Int', 'Any', 'Any',),
+			}
+
+			self.Oc['Int']['value'] = 'Int'
+			self.Oc['Boolean']['value'] = 'Boolean'
+			self.Oc['String']['length'] = 'Int'
+			self.Oc['String']['str_field'] = 'String'
+			self.Oc['Symbol']['next'] = 'Symbol'
+			self.Oc['Symbol']['name'] = 'String'
+			self.Oc['Symbol']['hash'] = 'Int'
+			self.Oc['ArrayAny']['array_field'] = 'AnyArray'
+
 
 	def enterClassScope(self, c):
 		"Put all class attributes in scope"
