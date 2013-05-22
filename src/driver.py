@@ -1,5 +1,5 @@
 import sys
-from settings import DEBUG
+from settings import *
 
 USAGE = """usage: %s <INPUT FILE> (<OUTPUT FORMAT>)
 
@@ -38,7 +38,8 @@ if __name__ == "__main__":
 	Error.input = text
 
 	try:
-		tree = yacc.parse(text, lexer=lex, debug=DEBUG)
+		if DEBUG: print "--- Beginning parsing ---"
+		tree = yacc.parse(text, lexer=lex, debug=PARSE_DEBUG)
 		print tree.pretty(0, style)
 
 		if Error.errors:
@@ -62,7 +63,7 @@ if __name__ == "__main__":
 
 	if Error.errors > 0:
 		sys.stderr.write(
-			"Parsing complete with %d error%s.\n" % (
+			"Completed with %d error%s.\n" % (
 				Error.errors, 
 				'' if Error.errors == 1 else 's'
 			)
