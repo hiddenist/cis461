@@ -98,7 +98,9 @@ class Class(Node):
 		super(Class, self).__init__([t, formals, options, body], token=token)
 
 	def typeCheck(self):
-		self.superclass.typeCheckOnce()
+		if not isinstance(self.superclass, Native):
+			self.superclass.typeCheckOnce()
+
 		env.enterClassScope(self.type.name)
 
 		# Check all of the class attributes, either in the body or in the formals
@@ -130,6 +132,13 @@ class List(Node):
 
 class Native(Node):
 	TYPE = "native"
+	name = None
+
+	def getType(self):
+		return Type(None)
+
+	def typeCheck(self):
+		pass
 
 class Formals(List):
 	TYPE = "formals"
@@ -175,15 +184,16 @@ class MatchExpr(Expr):
 		# Get the types of all of the cases...
 		# Should we disclude nulls from this?  Hmm...
 		types = [case.getType() for case in self.cases]
+		t = Type.typeJoin(*types)
 
 		# Join the types... my understanding is that this is to find a common parent class
-		return Type.typeJoin(*types)
+		return t
 
 	def typeCheck(self):
 		types = []
 		nulls = 0
 		for case in self.cases:
-			t = case.getType()
+			t = case.type
 
 			if t.isNull():
 				if nulls:
@@ -215,7 +225,7 @@ class Case(Node):
 		super(Case, self).__init__([id, type, block], token=token)
 
 	def getType(self):
-		return self.type
+		return self.block.getType()
 	
 	def typeCheck(self):
 		env.enterScope()
@@ -626,7 +636,10 @@ class Type(Symbol):
 			TypeCheckError("Class '%s' may not extend type '%s'" 
 				% (self.name, superclass), self.token).report()
 		try:
-			env.defineClass(self.name, superclass.name)
+			if isinstance(superclass, Native):
+				env.defineClass(self.name, None)
+			else:
+				env.defineClass(self.name, superclass.name)
 		except SymbolError, e:
 			e.setToken(self.token)
 			e.report()
@@ -702,6 +715,9 @@ class Def(Feature):
 			e.report()
 
 	def typeCheck(self):
+		if isinstance(self.value, Native):
+			return
+
 		args = tuple(f.name for f in self.formals.getType())
 		try:
 			super_method = env.getMethod(env.getSuperClass(self.c), self.id.name)
