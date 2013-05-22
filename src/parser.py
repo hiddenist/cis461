@@ -58,9 +58,17 @@ def p_classopts(p):
 
 	if len(p) == 2:
 		# Intermediate: class C(F) { X } ==> class C(F) extends Any() { X }
-		p[0] = ClassOpts(Type("Any"), Actuals(), token=ParseToken(p, 1)) 
+		p[0] = ClassOpts(
+			Type("Any", token=ParseToken(p, 1)), # Implicit... these dont actually have tokens.
+			Actuals(token=ParseToken(p, 1)), 
+			token=ParseToken(p, 1)
+		) 
 	if len(p) > 2:
-		p[0] = ClassOpts(Native(token=ParseToken(p, 2)), Actuals(), token=ParseToken(p, 1))
+		p[0] = ClassOpts(
+			Native(token=ParseToken(p, 2)), 
+			Actuals(token=ParseToken(p,1)), 
+			token=ParseToken(p, 1)
+		)
 	if len(p) > 3:
 		p[0] = ClassOpts(p[2], p[3], token=ParseToken(p, 1))
 
@@ -116,7 +124,12 @@ def p_feature_var(p):
 	if len(p) == 3:
 		p[0] = p[1]
 	else:
-		p[0] = VarInit(p[2], Native(token=ParseToken(p, 4)), Native(token=ParseToken(p, 4)), token=ParseToken(p, 1))
+		p[0] = VarInit(
+			p[2], 
+			Native(token=ParseToken(p, 4)), 
+			Native(token=ParseToken(p, 4)), 
+			token=ParseToken(p, 1)
+		)
 
 def p_feature_block(p):
 	"feature : '{' block '}' ';'"
@@ -318,7 +331,12 @@ def p_case(p):
 		p[0] = Case(p[2], p[4], p[6], token=ParseToken(p, 1))
 	else:
 		# Intermediate: case null => E ==> case null:Null => E
-		p[0] = Case(Null(token=ParseToken(p, 2)), Type("Null", token=ParseToken(p, 2)), p[4], token=ParseToken(p, 1)) 
+		p[0] = Case(
+			Null(token=ParseToken(p, 2)), 
+			Type("Null", token=ParseToken(p, 2)), 
+			p[4], 
+			token=ParseToken(p, 1)
+		) 
 
 def p_match_comparison(p):
 	"match : comparison"
