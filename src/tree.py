@@ -214,7 +214,6 @@ class WhileExpr(Expr):
 		super(WhileExpr, self).typeCheck()
 		if not self.cond.getType().isType("Boolean"):
 			raise TypeCheckError("Loop condition must be a boolean")
-		pass
 
 class Dot(Node):
 	TYPE = "dot"
@@ -232,11 +231,6 @@ class BinaryExpr(Expr):
 		self.left = left
 		self.right = right
 		super(BinaryExpr, self).__init__([left, right], token=token)
-
-class UnaryExpr(Expr):
-	def __init__(self, arg, token=None):
-		self.arg = arg
-		super(UnaryExpr, self).__init__([arg], token=token)
 
 class AssignExpr(BinaryExpr):
 	TYPE = "assign"
@@ -291,9 +285,13 @@ class ArithExpr(BinaryExpr):
 		return Type("Int")
 
 	def typeCheck(self):
+		super(ArithExpr, self).typeCheck()
+
 		ltype = self.left.getType()
 		rtype = self.right.getType()
+
 		invalid = None
+
 		if not ltype.isType("Int"):
 			invalid = self.left
 		elif not rtype.isType("Int"):
@@ -315,12 +313,36 @@ class MultExpr(ArithExpr):
 
 class DivExpr(ArithExpr):
 	TYPE = "divide"
+
+class UnaryExpr(Expr):
+	def __init__(self, arg, token=None):
+		self.arg = arg
+		super(UnaryExpr, self).__init__([arg], token=token)
 	
 class NotExpr(UnaryExpr):
 	TYPE = "not"
 
+	def getType(self):
+		return Type("Boolean")
+
+	def typeCheck(self):
+		super(NotExpr, self).typeCheck()
+		if not self.arg.isType("Boolean"):
+			raise TypeCheckError("'Not' operator may only be used with argument of type 'Boolean'", 
+				self.token)
+
 class NegExpr(UnaryExpr):
 	TYPE = "negative"
+
+	def getType(self):
+		return Type("Int")
+
+	def typeCheck(self):
+		super(NotExpr, self).typeCheck()
+		if not self.arg.isType("Int"):
+			raise TypeCheckError("Negation operator may only be used with argument of type 'Int'", 
+				self.token)
+
 
 class Primary(Node):
 	TYPE = "primary"
