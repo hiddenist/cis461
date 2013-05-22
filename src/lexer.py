@@ -216,7 +216,7 @@ def error_handling_token(get_token):
 	def new_fn(*args, **kwargs):
 		token = get_token(*args, **kwargs)
 		if hasattr(token, 'error'):
-			token.error.display()
+			token.error.report()
 		return token
 	return new_fn
 

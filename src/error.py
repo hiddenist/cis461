@@ -41,6 +41,7 @@ class TokenError(Error):
 		if hasattr(token, 'lineno') and hasattr(token, 'lexpos'):
 			self.lineno = token.lineno
 			self.lexpos = token.lexpos
+			self.token.hasError = False
 		else:
 			self.lineno = None
 			self.lexpos = None
@@ -56,6 +57,15 @@ class TokenError(Error):
 			sys.stderr.write(': ')
 		sys.stderr.write(str(self))
 		sys.stderr.write('\n\n')
+
+	def report(self):
+		# Ignore multiple errors on the same token...
+		if self.token is not None and self.token.hasError:
+			self.ignore()
+		else:
+			super(TokenError, self).report()
+			if self.token is not None:
+				self.token.hasError = True
 
 	@staticmethod
 	def find_column(lexpos):

@@ -23,13 +23,8 @@ def p_program(p):
 
 
 def p_error(p):
-	# If we don't want to fail on an error, we could display this here instead of raising
-	err = TokenError("Syntax error: unexpected token", p)
-	if Error.errors < Error.MAX_ERRORS:
-		err.display()
-		yacc.errok() # Ignore the error, discard the token, and continue trying to parse
-	else:
-		raise err
+	TokenError("Syntax error: unexpected token", p).report()
+	yacc.errok() # Ignore the error, discard the token, and continue trying to parse
 
 def p_empty(p):
 	'empty :'

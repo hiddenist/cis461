@@ -155,16 +155,15 @@ class MatchExpr(Expr):
 
 			if t.isNull():
 				if nulls:
-					raise TypeCheckError("More than one null case in match", self.token)
+					TypeCheckError("More than one null case in match", self.token).report()
 				else:
 					nulls = 1
 					continue
 
 			for pt in types:
 				if t.subsetOf(pt):
-					raise TypeCheckError("Earlier case for type '%s' in match shadows type '%s'"
-							% (pt, t), case.token
-						)
+					TypeCheckError("Earlier case for type '%s' in match shadows type '%s'"
+							% (pt, t), case.token).report()
 
 			types.append(t)
 
@@ -172,8 +171,8 @@ class MatchExpr(Expr):
 		etype = self.expr.getType()
 		for t in types:
 			if not etype.subsetOf(t) and not t.subsetOf(etype):
-				raise TypeCheckError("Match expression of type '%s' is not compatible with case type '%s'"
-					% (etype, t), self.token)
+				TypeCheckError("Match expression of type '%s' is not compatible with case type '%s'"
+					% (etype, t), self.token).report()
 
 class Case(Node):
 	TYPE = "case"
@@ -213,7 +212,7 @@ class WhileExpr(Expr):
 	def typeCheck(self):
 		super(WhileExpr, self).typeCheck()
 		if not self.cond.getType().isType("Boolean"):
-			raise TypeCheckError("Loop condition must be a boolean")
+			TypeCheckError("Loop condition must be a boolean").report()
 
 class Dot(Node):
 	TYPE = "dot"
@@ -245,8 +244,8 @@ class AssignExpr(BinaryExpr):
 		rtype = self.right.getType()
 
 		if not rtype.subsetOf(ltype):
-			raise TypeCheckError("Type '%s' can not be assigned to variable of type '%s'" 
-				% (rtype, ltype))
+			TypeCheckError("Type '%s' can not be assigned to variable of type '%s'" 
+				% (rtype, ltype)).report()
 
 class CompExpr(BinaryExpr):
 	def getType(self):
@@ -266,8 +265,8 @@ class IntCompExpr(CompExpr):
 			invalue = self.right
 
 		if invalid:
-			raise TypeCheckError("Cannot compare '%s' to '%s'; both must be Int" 
-				% (ltype, rtype), invalid.token)
+			TypeCheckError("Cannot compare '%s' to '%s'; both must be Int" 
+				% (ltype, rtype), invalid.token).report()
 
 		
 
@@ -298,9 +297,9 @@ class ArithExpr(BinaryExpr):
 			invalid = self.right
 
 		if invalid:
-			raise TypeCheckError("Cannot apply arithmetic operation to types "
+			TypeCheckError("Cannot apply arithmetic operation to types "
 				+ "'%s' and '%s';" % (ltype, rtype)
-				+ " both must be Int" , invalid.token)
+				+ " both must be Int" , invalid.token).report()
 
 class AddExpr(ArithExpr):
 	TYPE = "add"
@@ -328,8 +327,8 @@ class NotExpr(UnaryExpr):
 	def typeCheck(self):
 		super(NotExpr, self).typeCheck()
 		if not self.arg.isType("Boolean"):
-			raise TypeCheckError("'Not' operator may only be used with argument of type 'Boolean'", 
-				self.token)
+			TypeCheckError("'Not' operator may only be used with argument of type 'Boolean'", 
+				self.token).report()
 
 class NegExpr(UnaryExpr):
 	TYPE = "negative"
@@ -340,8 +339,8 @@ class NegExpr(UnaryExpr):
 	def typeCheck(self):
 		super(NotExpr, self).typeCheck()
 		if not self.arg.isType("Int"):
-			raise TypeCheckError("Negation operator may only be used with argument of type 'Int'", 
-				self.token)
+			TypeCheckError("Negation operator may only be used with argument of type 'Int'", 
+				self.token).report()
 
 
 class Primary(Node):
@@ -401,6 +400,13 @@ class Identifier(Symbol):
 	def getType(self):
 		return Type(env.getVar(self.name))
 
+	def attrDefine(self, c):
+		try:
+			env.defineAttr(c, self.name)
+		except SymbolError, e:
+			e.token = self.token
+			e.report()
+
 	def define(self, type, shadow=False):
 		if not shadow:
 			try:
@@ -408,8 +414,9 @@ class Identifier(Symbol):
 			except SymbolError, e:
 				e.ignore()
 			else:
-				raise SymbolError("The variable '%s' is already defined and may not shadow." % self.id, 
+				e = SymbolError("The variable '%s' is already defined and may not shadow." % self.name, 
 					self.token)
+				e.report()
 
 		env.defineVar(self.name, type.name)
 
@@ -515,19 +522,20 @@ class Type(Symbol):
 
 	def define(self, superclass):
 		if superclass in UNINHERITABLE_TYPES:
-			raise TypeCheckError("Class '%s' may not extend type '%s'" % (self.name, superclass), self.token)
+			TypeCheckError("Class '%s' may not extend type '%s'" 
+				% (self.name, superclass), self.token).report()
 		try:
 			env.defineClass(self.name, superclass.name)
 		except SymbolError, e:
 			e.setToken(self.token)
-			raise e
+			e.report()
 
 	def typeCheck(self):
 		try:
 			env.getSuperClass(self.name)
 		except SymbolError, e:
 			e.setToken(self.token)
-			raise e
+			e.report()
 
 	def isType(self, t):
 		if isinstance(t, Type):
@@ -557,7 +565,7 @@ class Constructor(Node):
 	def __init__(self, type, actuals, token=None):
 		# Type check rule for new disallows the following types
 		if type in UNINSTANTIABLE_TYPES:
-			raise TypeCheckError("Objects of type '%s' are uninstantiable.")
+			TypeCheckError("Objects of type '%s' are uninstantiable.", self.token).report()
 		self.type = type
 		self.actuals = actuals
 		super(Constructor, self).__init__([type, actuals], token=token)
@@ -602,7 +610,7 @@ class VarInit(Feature):
 
 		valuetype = self.value.getType()
 		if not valuetype.subsetOf(self.type):
-			raise TypeCheckError("Value of type '%s' can't be assigned to variable of type '%s'"
-				% (valuetype, self.type), self.token)
+			TypeCheckError("Value of type '%s' can't be assigned to variable of type '%s'"
+				% (valuetype, self.type), self.token).report()
 
 		self.id.define(self.type)
