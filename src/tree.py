@@ -26,10 +26,16 @@ class Node(object):
 	def __init__(self, children=[], token=None):
 		self.children = children
 		self.token = token
+		self.typeChecked = False
+
+	def typeCheckOnce(self):
+		if not self.typeChecked:
+			self.typeChecked = True
+			self.typeCheck()
 
 	def typeCheck(self):
 		for child in self.children:
-			child.typeCheck()
+			child.typeCheckOnce()
 
 	def __getitem__(self, idx):
 		return self.children[idx]
@@ -88,18 +94,23 @@ class Class(Node):
 		super(Class, self).__init__([type, formals, options, body], token=token)
 
 	def typeCheck(self):
-		env.enterScope()
+		self.superclass.typeCheckOnce()
+		env.enterClassScope(self.type.name)
 
 		# Check all of the class attributes, either in the body or in the formals
 		for formal in self.formals.children:
-			formal.id.attrDefine(self.type.name)
+			formal.id.attrDefine(self.type.name, formal.type.name)
 
-		for feature in self.body:
+		for feature in self.body.children:
+			if type(feature) is Def:
+				feature.define(self.type.name)
+
 			if type(feature) is VarInit:
-				feature.id.attrDefine(self.type.name)
+				feature.id.attrDefine(self.type.name, feature.type.name)
+			else:
+				feature.typeCheckOnce()
 
-		super(Class, self).typeCheck()
-		env.exitScope()
+		env.exitClassScope(self.type.name)
 
 class ClassBody(Node):
 	TYPE = "classbody"
@@ -121,6 +132,9 @@ class Native(Node):
 class Formals(List):
 	TYPE = "formals"
 
+	def getType(self):
+		return [f.getType() for f in self.children]
+
 class Actuals(List):
 	TYPE = "actuals"
 
@@ -132,15 +146,17 @@ class Block(Node):
 		super(Block, self).__init__( contents + [value], token=token)
 
 	def getType(self):
-		return self.value.getType()
+		self.typeCheckOnce()
+		return self.type
 
 	def typeCheck(self):
 		env.enterScope()
 		for line in self.contents:
-			line.typeCheck()
-		val = self.value.typeCheck()
+			line.typeCheckOnce()
+
+		self.value.typeCheckOnce()
+		self.type = self.value.getType()
 		env.exitScope()
-		return val
 
 class Expr(Node):
 	TYPE = "expr"
@@ -159,7 +175,7 @@ class MatchExpr(Expr):
 		types = [case.getType() for case in self.cases]
 
 		# Join the types... my understanding is that this is to find a common parent class
-		return env.typeJoin(*types)
+		return Type.typeJoin(*types)
 
 	def typeCheck(self):
 		types = []
@@ -201,8 +217,8 @@ class Case(Node):
 	
 	def typeCheck(self):
 		env.enterScope()
-		self.id.define(shadow=True)
-		self.block.typeCheck()
+		self.id.define(self.type, shadow=True)
+		self.block.typeCheckOnce()
 		env.exitScope()
 
 class IfExpr(Expr):
@@ -212,6 +228,13 @@ class IfExpr(Expr):
 		self.true = true
 		self.false = false
 		super(IfExpr, self).__init__([cond, true, false], token=token)
+
+	def getType(self):
+		return Type.typeJoin(self.true.getType(), self.false.getType())
+
+	def typeCheck(self):
+		if not self.cond.getType().isType("Boolean"):
+			TypeCheckError("If condition must be a boolean", self.cond.token).report()
 
 class WhileExpr(Expr):
 	TYPE = "while"
@@ -224,9 +247,9 @@ class WhileExpr(Expr):
 		return Type("Unit")
 
 	def typeCheck(self):
-		super(WhileExpr, self).typeCheck()
+		super(WhileExpr, self).typeCheckOnce()
 		if not self.cond.getType().isType("Boolean"):
-			TypeCheckError("Loop condition must be a boolean").report()
+			TypeCheckError("Loop condition must be a boolean", self.cond.token).report()
 
 class Dot(Node):
 	TYPE = "dot"
@@ -236,7 +259,7 @@ class Dot(Node):
 		super(Dot, self).__init__([parent, child], token=token)
 
 	def getType(self):
-		print "Uninitialized"
+		print "Todo: dot type check"
 		return Type("Null")
 
 class BinaryExpr(Expr):
@@ -252,7 +275,7 @@ class AssignExpr(BinaryExpr):
 		return Type("Unit")
 
 	def typeCheck(self):
-		super(AssignExpr, self).typeCheck()
+		super(AssignExpr, self).typeCheckOnce()
 
 		ltype = self.left.getType()
 		rtype = self.right.getType()
@@ -267,7 +290,7 @@ class CompExpr(BinaryExpr):
 
 class IntCompExpr(CompExpr):
 	def typeCheck(self):
-		super(IntCompExpr, self).typeCheck()
+		super(IntCompExpr, self).typeCheckOnce()
 
 		ltype = self.left.getType()
 		rtype = self.right.getType()
@@ -298,7 +321,7 @@ class ArithExpr(BinaryExpr):
 		return Type("Int")
 
 	def typeCheck(self):
-		super(ArithExpr, self).typeCheck()
+		super(ArithExpr, self).typeCheckOnce()
 
 		ltype = self.left.getType()
 		rtype = self.right.getType()
@@ -339,8 +362,8 @@ class NotExpr(UnaryExpr):
 		return Type("Boolean")
 
 	def typeCheck(self):
-		super(NotExpr, self).typeCheck()
-		if not self.arg.isType("Boolean"):
+		super(NotExpr, self).typeCheckOnce()
+		if not self.arg.getType().isType("Boolean"):
 			TypeCheckError("'Not' operator may only be used with argument of type 'Boolean'", 
 				self.token).report()
 
@@ -351,8 +374,8 @@ class NegExpr(UnaryExpr):
 		return Type("Int")
 
 	def typeCheck(self):
-		super(NotExpr, self).typeCheck()
-		if not self.arg.isType("Int"):
+		super(NotExpr, self).typeCheckOnce()
+		if not self.arg.getType().isType("Int"):
 			TypeCheckError("Negation operator may only be used with argument of type 'Int'", 
 				self.token).report()
 
@@ -362,13 +385,51 @@ class Primary(Node):
 
 class Call(Primary):
 	TYPE = "call"
-	def __init__(self, type, actuals, token=None):
-		self.type = type
+	def __init__(self, method, actuals, token=None):
+		self.method = method
 		self.actuals = actuals
-		super(Call, self).__init__([type, actuals], token=token)
+		super(Call, self).__init__([method, actuals], token=token)
+
+	def getMethod(self):
+		if isinstance(self.method, Identifier):
+			c = env.getVar('this')
+			n = self.method.name
+		elif isinstance(self.method, Dot):
+			c = self.method.parent.getType().name
+			n = self.method.child.name
+		else:
+			print "What else can a method call be made of?"
+
+		try:
+			return c, n, env.getMethod(c, n)
+		except SymbolError, e:
+			e.setToken(self.token)
+			e.report()
+			return None, None, ['Nothing']
+
+	def getType(self):
+		return Type(self.getMethod()[-1][-1])
+
+	def typeCheck(self):
+		c, m, args = self.getMethod()
+		ret, args = args[-1], args[:-1]
+		if len(self.actuals.children) != len(args):
+			TypeCheckError("Method '%s' of class '%s' requires %d arguments; received %d"
+				% (m, c, len(args), len(self.actuals.children)), self.token).report()
+		else:
+			for i, actual in enumerate(self.actuals.children):
+				if not actual.getType().subsetOf(args[i]):
+					TypeCheckError("Provided argument does not match type in method definition;"
+						+ " '%s' is not compatible with '%s'" 
+						% (actual.getType().name, args[i]), actual.token).report()
 
 class Super(Call):
 	TYPE = "super"
+
+	def getMethod(self):
+		c = env.getVar('super')
+		n = self.method.name
+		return c, n, env.getMethod(c, n)
 
 class NullaryPrimary(Primary):
 	def __init__(self, token=None):
@@ -381,6 +442,9 @@ class Null(NullaryPrimary):
 
 class This(NullaryPrimary):
 	TYPE = "this"
+
+	def getType(self):
+		return Type(env.getVar('this'))
 
 class Unit(NullaryPrimary):
 	TYPE = "unit"
@@ -412,27 +476,44 @@ class Identifier(Symbol):
 	TYPE = "id"
 
 	def getType(self):
-		return Type(env.getVar(self.name))
-
-	def attrDefine(self, c):
 		try:
-			env.defineAttr(c, self.name)
+			return Type(env.getVar(self.name))
 		except SymbolError, e:
-			e.token = self.token
+			e.setToken(self.token)
 			e.report()
 
-	def define(self, type, shadow=False):
+	def attrDefine(self, c, T):
+		try:
+			env.defineAttr(c, self.name, T)
+		except SymbolError, e:
+			e.setToken(self.token)
+			e.report()
+
+	def typeCheck(self):
+		try:
+			self.getType()
+		except SymbolError, e:
+			e.setToken(self.token)
+			e.report()
+
+	def define(self, t, shadow=False):
 		if not shadow:
 			try:
 				env.getVar(self.name)
 			except SymbolError, e:
 				e.ignore()
 			else:
-				e = SymbolError("The variable '%s' is already defined and may not shadow." % self.name, 
+				e = SymbolError("The variable '%s' is already defined and may not shadow" % self.name, 
 					self.token)
 				e.report()
+				return
 
-		env.defineVar(self.name, type.name)
+		try:
+			env.defineVar(self.name, t.name)
+		except SymbolError, e:
+			e.setToken(self.token)
+			e.report()
+
 
 class Literal(UnaryPrimary):
 	def rep(self):
@@ -478,8 +559,11 @@ class Formal(Node):
 		self.type = type
 		super(Formal, self).__init__([id, type], token=token)
 
+	def getType(self):
+		return self.type
+
 	def typeCheck(self):
-		self.id.define(self.type)
+		self.id.define(self.type, shadow=True)
 
 class Actual(Node):
 	TYPE = "actual"
@@ -488,7 +572,7 @@ class Type(Symbol):
 	TYPE = "type"
 
 	def __str__(self):
-		return self.name
+		return str(self.name)
 
 	@staticmethod
 	def typeJoin(*types):
@@ -508,6 +592,7 @@ class Type(Symbol):
 
 		# If this type join is used for more than just match statements, I really need to rethink this.
 
+		types = list(types)
 		s = types.pop()
 		if s.isNull():
 			s, _ = types.pop(), types.append(s) 
@@ -578,11 +663,14 @@ class Constructor(Node):
 	TYPE = "constructor"
 	def __init__(self, type, actuals, token=None):
 		# Type check rule for new disallows the following types
-		if type in UNINSTANTIABLE_TYPES:
-			TypeCheckError("Objects of type '%s' are uninstantiable.", self.token).report()
+		if type.name in UNINSTANTIABLE_TYPES:
+			TypeCheckError("Objects of type '%s' are uninstantiable", self.token).report()
 		self.type = type
 		self.actuals = actuals
 		super(Constructor, self).__init__([type, actuals], token=token)
+
+	def getType(self):
+		return self.type
 
 class Feature(Node):
 	TYPE = "feature"
@@ -595,13 +683,63 @@ class Def(Feature):
 		self.formals = formals
 		self.type = type
 		self.value = value
+
 		if override:
 			super(Def, self).__init__([Override(), id, formals, type, value], token=token)
 		else:
 			super(Def, self).__init__([id, formals, type, value], token=token)
 
+	def define(self, c):
+		args = tuple(f.name for f in self.formals.getType())
+		try:
+			super_method = env.getMethod(env.getSuperClass(c), self.id.name)
+			if self.override:
+				sargs = super_method[:-1]
+				if len(args) != len(sargs):
+						TypeCheckError("Overriding method does not have the same number of arguments as overridden method",
+							self.token).report()
+				else: 
+					for arg, sarg in zip(args, sargs):
+						if arg != sarg:
+							TypeCheckError("Overriding method argument types do not match overridden method types",
+								self.token).report()
+							break
+				
+				if not self.type.subsetOf(super_method[-1]):
+					TypeCheckError("Overriding method type is not compatible with overridden method type",
+						self.type.token).report()
+			else:
+				TypeCheckError("Overriding method must use override keyword", self.token).report()
+		except SymbolError, e:
+			if self.override:
+				TypeCheckError("Method is set to override, but does not exist in ancestor classes", self.token).report()
+			else:
+				e.ignore()
+
+		try:
+			env.defineMethod(c, self.id.name, args + (self.type.name,))
+		except SymbolError, e:
+			e.setToken(self.token)
+			e.report()
+
+	def typeCheck(self):
+		env.enterScope()
+		
+		# Type checking the formals defines them, and allows shadowing
+		self.formals.typeCheckOnce()
+
+		self.type.typeCheckOnce()
+
+		self.value.typeCheckOnce()
+
+		t = self.value.getType()
+		if t is None or not t.subsetOf(self.type):
+			TypeCheckError("Method result does not match method return type", self.type.token).report()
+
+		env.exitScope()
+
 class Override(Node):
-	Type = "override"
+	TYPE = "override"
 
 class VarInit(Feature):
 	TYPE = "init"
@@ -620,7 +758,7 @@ class VarInit(Feature):
 		return Type(self.type)
 	
 	def typeCheck(self):
-		super(VarInit, self).typeCheck()
+		super(VarInit, self).typeCheckOnce()
 
 		valuetype = self.value.getType()
 		if not valuetype.subsetOf(self.type):

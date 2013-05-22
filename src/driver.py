@@ -7,14 +7,15 @@ USAGE = """usage: %s <INPUT FILE> (<OUTPUT FORMAT>)
   indented, parenthesized-style format.
 """ % sys.argv[0]
 
-def errorExit(errors):
-	sys.exit("Failed with %d error%s." % (errors, '' if errors == 1 else 's'))
 	
 
 if __name__ == "__main__":
 	from lexer import tokens, reserved, lexer as lex
 	from parser import yacc
 	from error import *
+
+	def errorExit():
+		sys.exit("Failed with %d error%s." % (Error.errors, '' if Error.errors == 1 else 's'))
 
 	if len(sys.argv) not in (2, 3):
 		sys.exit(USAGE)
@@ -61,13 +62,12 @@ if __name__ == "__main__":
 		TokenError("\nUnterminated %s: Encountered EOF\n" % (state), token).display()
 
 
-	if Error.errors > 0:
-		sys.stderr.write(
-			"Completed with %d error%s.\n" % (
-				Error.errors, 
-				'' if Error.errors == 1 else 's'
-			)
+	sys.stderr.write(
+		"Completed with %d error%s.\n" % (
+			Error.errors, 
+			'' if Error.errors == 1 else 's'
 		)
+	)
 
 
 

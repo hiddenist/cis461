@@ -24,7 +24,6 @@ class Error(Exception):
 		if Error.errors >= Error.MAX_ERRORS:
 			raise TooManyErrors()
 
-
 	def ignore(self):
 		"Remove this error from the error count"
 		Error.errors -= 1
@@ -38,10 +37,13 @@ class TokenError(Error):
 
 	def setToken(self, token):
 		self.token = token
+
+		if self.token is not None:
+			self.token.displayedError = False
+
 		if hasattr(token, 'lineno') and hasattr(token, 'lexpos'):
 			self.lineno = token.lineno
 			self.lexpos = token.lexpos
-			self.token.hasError = False
 		else:
 			self.lineno = None
 			self.lexpos = None
@@ -60,12 +62,12 @@ class TokenError(Error):
 
 	def report(self):
 		# Ignore multiple errors on the same token...
-		if self.token is not None and self.token.hasError:
+		if self.token is not None and self.token.displayedError:
 			self.ignore()
 		else:
 			super(TokenError, self).report()
 			if self.token is not None:
-				self.token.hasError = True
+				self.token.displayedError = True
 
 	@staticmethod
 	def find_column(lexpos):

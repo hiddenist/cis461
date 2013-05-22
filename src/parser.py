@@ -11,6 +11,7 @@ class ParseToken(object):
 		self.lineno = p.lineno(idx)
 		self.lexpos = p.lexpos(idx)
 		self.value = p[idx]
+		self.displayedError = False
 
 	def __str__(self):
 		return str(self.value)
@@ -132,7 +133,7 @@ def p_feature_block(p):
 
 def p_feature_def(p):
 	"feature : opt_override DEF id formals ':' type '=' expr_or_native ';'"
-	p[0] = Def(p[1], p[3], p[4], p[6], p[8], token=ParseToken(p, 2))
+	p[0] = Def(p[1] is not None, p[3], p[4], p[6], p[8], token=ParseToken(p, 2))
 
 def p_expr_or_native_expr(p):
 	"expr_or_native : expr"
