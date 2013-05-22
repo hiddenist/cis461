@@ -1,21 +1,35 @@
 import sys
 import settings
 
+class TooManyErrors(Exception):
+	pass
+
 class Error(Exception):
 	errors = 0
+	elist = []
 	MAX_ERRORS = settings.MAX_ERRORS
 	def __init__(self, string):
 		super(Error, self).__init__(string)
 		Error.errors += 1
 		self.errorno = Error.errors
 
+		if settings.DEBUG: Error.elist.append(self)
+
 	def display(self):
 		sys.stderr.write(str(self) + '\n')
+
+	def report(self):
+		"Displays an error, but also raises another error when the max errors have been exceeded"
+		self.display()
+		if Error.errors >= Error.MAX_ERRORS:
+			raise TooManyErrors()
+
 
 	def ignore(self):
 		"Remove this error from the error count"
 		Error.errors -= 1
-		self.errorno = None
+		self.errorno = -1
+		if settings.DEBUG: Error.elist.remove(self)
 		
 class TokenError(Error):
 	def __init__(self, string, token=None):
@@ -77,6 +91,9 @@ class TokenError(Error):
 		if endline != next_cr: line = line[:-len(ellipsis)] + ellipsis
 
 		return (column, line, displaycolumn)
+
+class LexError(TokenError):
+	pass
 
 class TypeCheckError(TokenError):
 	pass

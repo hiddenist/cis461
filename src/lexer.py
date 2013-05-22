@@ -74,7 +74,7 @@ def t_newline(t):
 if (DEBUG):
 	def t_illegal_newline(t):
 		r'\r' # ... or if it does, display a warning when in debug
-		raise TokenError("DEBUG WARNING: Input contains carriage returns!", t)
+		raise LexError("DEBUG WARNING: Input contains carriage returns!", t)
 
 
 ### Literals ###
@@ -83,7 +83,7 @@ def t_INTEGER(t):
 	try:
 		t.value = int(t.value)
 	except ValueError:
-		raise TokenError("Integer value too large %d" % t.value, t)
+		raise LexError("Integer value too large %d" % t.value, t)
 		# Does %d actually work if it's too big?
 	return t
 
@@ -100,7 +100,7 @@ def t_ID(t):
 
 	# We can't raise an error and return a token, so store the error in the token for the driver to display
 	if t.value in reserved:
-		t.error = TokenError("Illegal reserved word used: '%s'" % t.value, t)
+		t.error = LexError("Illegal reserved word used: '%s'" % t.value, t)
 	
 	return t
 
@@ -188,7 +188,7 @@ def t_string_stringdata(t):
 @allows_linebreaks
 def t_string_linebreak(t):
 	r'\n'
-	t.error = TokenError("Unterminated string: Encountered newline", t)
+	t.error = LexError("Unterminated string: Encountered newline", t)
 	return t_string_end(t)
 
 def t_string_end(t):
@@ -201,13 +201,13 @@ def t_string_end(t):
 
 def t_string_longstring_error(t):
 	t.lexer.skip(1)
-	raise TokenError("Illegal character in %s: %s" % (t.lexer.lexstate, repr(t.value[0])), t)
+	raise LexError("Illegal character in %s: %s" % (t.lexer.lexstate, repr(t.value[0])), t)
 
 
 ### Error state ###
 def t_INITIAL_comment_error(t):
 	t.lexer.skip(1)
-	raise TokenError("Illegal character: %s " % repr(t.value[0]), t)
+	raise LexError("Illegal character: %s " % repr(t.value[0]), t)
 
 lexer = lex.lex(debug=DEBUG)
 

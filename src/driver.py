@@ -7,6 +7,10 @@ USAGE = """usage: %s <INPUT FILE> (<OUTPUT FORMAT>)
   indented, parenthesized-style format.
 """ % sys.argv[0]
 
+def errorExit(errors):
+	sys.exit("Failed with %d error%s." % (errors, '' if errors == 1 else 's'))
+	
+
 if __name__ == "__main__":
 	from lexer import tokens, reserved, lexer as lex
 	from parser import yacc
@@ -36,11 +40,17 @@ if __name__ == "__main__":
 	try:
 		tree = yacc.parse(text, lexer=lex, debug=DEBUG)
 		print tree.pretty(0, style)
+
+		if Error.errors:
+			errorExit()
+			
 		if DEBUG: print "--- Beginning type checking ---"
 		tree.typeCheck()
-	except TokenError, e:
+	except TooManyErrors:
+		errorExit()
+	except Error, e:
 		e.display()
-		sys.exit("Failed with %d error%s." % (Error.errors, '' if Error.errors == 1 else 's'))
+		errorExit()
 
 	state = lex.lexstate
 	if state in ('comment', 'string', 'longstring'):
