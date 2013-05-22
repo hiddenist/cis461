@@ -460,7 +460,8 @@ class This(NullaryPrimary):
 
 class Unit(NullaryPrimary):
 	TYPE = "unit"
-	def getType():
+
+	def getType(self):
 		return Type("Unit")
 
 class UnaryPrimary(Primary):
