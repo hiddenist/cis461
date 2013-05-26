@@ -13,6 +13,7 @@ if __name__ == "__main__":
 	from lexer import tokens, reserved, lexer as lex
 	from parser import yacc
 	from error import *
+	from type_checking import TypeChecker
 
 	def errorExit():
 		for e in Error.elist:
@@ -49,7 +50,7 @@ if __name__ == "__main__":
 			errorExit()
 			
 		if DEBUG: print "--- Beginning type checking ---"
-		tree.typeCheck()
+		TypeChecker(tree).check()
 	except TooManyErrors:
 		errorExit()
 	except Error, e:

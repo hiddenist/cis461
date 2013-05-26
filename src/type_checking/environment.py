@@ -1,12 +1,6 @@
 from error import SymbolError
 from settings import SYMBOL_DEBUG as DEBUG, SIMULATE_BASIC
 
-
-UNINSTANTIABLE_TYPES = ('Any', 'Int', 'Unit', 'Boolean', 'Symbol')
-NOT_NULLABLE_TYPES = ('Nothing', 'Boolean', 'Int', 'Unit')
-UNINHERITABLE_TYPES = ('Unit', 'Int', 'String', 'Boolean', 'ArrayAny', 
-	'Symbol', 'Null', 'Nothing')
-
 class Environment(object):
 	def __init__(self):
 		# Variables and their type, for each scope
@@ -58,7 +52,7 @@ class Environment(object):
 				('String', 'indexOf') : ('String', 'Int',),
 				('Symbol', 'hashCode'): ('Int',),
 				('ArrayAny', 'length') : ('Int',),
-				('ArrayAny', 'resize') : ('Int','AnyArray',),
+				('ArrayAny', 'resize') : ('Int','ArrayAny',),
 				('ArrayAny', 'get') : ('Int', 'Any',),
 				('ArrayAny', 'set') : ('Int', 'Any', 'Any',),
 			}
@@ -70,7 +64,7 @@ class Environment(object):
 			self.Oc['Symbol']['next'] = 'Symbol'
 			self.Oc['Symbol']['name'] = 'String'
 			self.Oc['Symbol']['hash'] = 'Int'
-			self.Oc['ArrayAny']['array_field'] = 'AnyArray'
+			self.Oc['ArrayAny']['array_field'] = 'ArrayAny'
 
 
 	def enterClassScope(self, c):
@@ -169,3 +163,5 @@ class Environment(object):
 		except KeyError:
 			if DEBUG: print type(c), self.C
 			raise SymbolError("Type '%s' has not been defined" % c)
+
+env = Environment()

@@ -218,7 +218,7 @@ def p_block_contents(p):
 		
 def p_block_instr_init(p):
 	"block_instr : var_init"
-	p[0] = p[1].setLocal()
+	p[0] = p[1]
 
 def p_block_instr_expr(p):
 	"block_instr : expr"
