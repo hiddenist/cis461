@@ -114,7 +114,8 @@ class IfExpr(NodeChecker):
 		self.node.cond.check()
 		self.node.true.check()
 		self.node.false.check()
-		if not self.node.cond.getType().isType("Boolean"):
+		cond_type = self.node.cond.getType()
+		if not getattr(cond_type, 'suppress_errors', False) and not cond_type.isType("Boolean"):
 			TypeCheckError("If condition must be a boolean", self.node.cond.token).report()
 
 
@@ -125,7 +126,9 @@ class WhileExpr(NodeChecker):
 	def check(self):
 		self.node.cond.check()
 		self.node.control.check()
-		if not self.node.cond.getType().isType("Boolean"):
+
+		cond_type = self.node.cond.getType()
+		if not getattr(cond_type, 'suppress_errors', False) and not cond_type.isType("Boolean"):
 			TypeCheckError("Loop condition must be a boolean", self.cond.token).report()
 
 
@@ -145,7 +148,10 @@ class AssignExpr(NodeChecker):
 		ltype = self.node.left.getType()
 		rtype = self.node.right.getType()
 
-		if not rtype.subsetOf(ltype):
+		if not getattr(ltype, 'suppress_errors', False) and (
+				not getattr(rtype, 'suppress_errors', False) and not rtype.subsetOf(ltype)
+			):
+
 			TypeCheckError("Type '%s' can not be assigned to variable of type '%s'" 
 				% (rtype, ltype)).report()
 
@@ -236,12 +242,18 @@ class Call(NodeChecker):
 		try:
 			return c, n, env.getMethod(c, n)
 		except SymbolError, e:
-			e.setToken(self.token)
-			e.report()
-			return None, None, ['Nothing']
+			if getattr(c, 'suppress_errors', False):
+				e.ignore()
+			else:
+				raise e
 
 	def getType(self):
-		return Type(self.getMethod()[-1][-1])
+		try:
+			return Type(self.getMethod()[-1][-1])
+		except SymbolError, e:
+			e.setToken(self.token)
+			e.report()
+			return Type("Nothing", suppress_errors=True)
 
 	def check(self):
 		c, m, args = self.getMethod()
@@ -251,7 +263,8 @@ class Call(NodeChecker):
 				% (m, c, len(args), len(self.node.actuals.children)), self.token).report()
 		else:
 			for i, actual in enumerate(self.node.actuals.children):
-				if not actual.getType().subsetOf(args[i]):
+				actual_type = actual.getType()
+				if not getattr(actual_type, 'suppress_errors', False) and not actual_type.subsetOf(args[i]):
 					TypeCheckError("Provided argument does not match type in method definition;"
 						+ " '%s' is not compatible with '%s'" 
 						% (actual.getType().name, args[i]), actual.token).report()
@@ -344,7 +357,8 @@ class Def(NodeChecker):
 								+"types", self.token).report()
 							break
 				
-				if not self.getType().subsetOf(super_method[-1]):
+				method_type = self.getType()
+				if not getattr(method_type, 'suppress_errors', False) and not method_type.subsetOf(super_method[-1]):
 					TypeCheckError("Overriding method type is not compatible with overridden method type",
 						self.node.type.token).report()
 			else:
@@ -384,8 +398,11 @@ class Identifier(NodeChecker):
 		try:
 			env.defineAttr(attrClass.name, self.node.name, attrType.name)
 		except SymbolError, e:
-			e.setToken(self.token)
-			e.report()
+			if getattr(attrClass, 'suppress_errors', False):
+				e.ignore()
+			else:
+				e.setToken(self.token)
+				e.report()
 
 	def check(self):
 		self.getType()
@@ -412,7 +429,8 @@ class Type(NodeChecker):
 	def __str__(self):
 		return str(self.name)
 
-	def __init__(self, name):
+	def __init__(self, name, suppress_errors = False):
+		self.suppress_errors = suppress_errors
 		if isinstance(name, tree.Type):
 			super(Type, self).__init__(name)
 			self.name = self.node.name
@@ -467,9 +485,20 @@ class Type(NodeChecker):
 		return self.name == 'Null'
 
 	def parent(self):
-		s = env.getSuperClass(self.name)
+		try:
+			s = env.getSuperClass(self.name)
+		except SymbolError, e:
+			if self.suppress_errors:
+				e.ignore()
+			else:
+				e.setToken(self.token)
+				e.report()
+			s = None
+			
 		if s is None:
-			return Type("Nothing")
+			print "Suppressing errors..."
+			return Type("Nothing", suppress_errors=True)
+
 		return Type(s)
 
 	def define(self, superclass):
@@ -482,15 +511,21 @@ class Type(NodeChecker):
 			else:
 				env.defineClass(self.name, superclass.name)
 		except SymbolError, e:
-			e.setToken(self.token)
-			e.report()
+			if self.suppress_errors:
+				e.ignore()
+			else: 
+				e.setToken(self.token)
+				e.report()
 
-	def typeCheck(self):
+	def check(self):
 		try:
 			env.getSuperClass(self.name)
 		except SymbolError, e:
-			e.setToken(self.token)
-			e.report()
+			if self.suppress_errors:
+				e.ignore
+			else:
+				e.setToken(self.token)
+				e.report()
 
 	def isType(self, t):
 		if isinstance(t, Type):
@@ -511,7 +546,15 @@ class Type(NodeChecker):
 			c = Type(c)
 			if c.isType(t):
 				return True
-			c = env.getSuperClass(c.name)
+			try:
+				c = env.getSuperClass(c.name)
+			except SymbolError, e:
+				if getattr(c, 'suppress_errors', False):
+					e.ignore()
+				else:
+					e.setToken(c.token)
+					e.report()
+
 
 		return False
 	
