@@ -11,9 +11,6 @@ class NodeChecker(object):
 	def getType(self):
 		pass
 
-	def pass1(self): 
-		pass
-
 	def check(self): 
 		pass
 	

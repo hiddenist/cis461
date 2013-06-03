@@ -164,4 +164,25 @@ class Environment(object):
 			if DEBUG: print type(c), self.C
 			raise SymbolError("Type '%s' has not been defined" % c)
 
+	def checkClassHierarchy(self):
+		checked = set()
+		for cls in self.C:
+			if cls in checked:
+				continue
+
+			family = set()
+			while cls is not None:
+					
+				if cls in family:
+					raise SymbolError("The class hierarchy is not a tree - class '%s' is its own ancestor"
+						% cls)
+				family.add(cls)
+				checked.add(cls)
+				try:
+					# Ignore non-existing superclasses here because the classes will check that
+					# and can output a more useful error message.
+					cls = self.C[cls]
+				except KeyError:
+					break
+
 env = Environment()

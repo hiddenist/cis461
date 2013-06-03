@@ -14,6 +14,9 @@ if __name__ == "__main__":
 	from parser import yacc
 	from error import *
 	from type_checking import TypeChecker
+	from code_gen import CodeGen
+
+	verbose = True # should probably make this a command-line arg
 
 	def errorExit():
 		for e in Error.elist:
@@ -42,15 +45,21 @@ if __name__ == "__main__":
 	Error.input = text
 
 	try:
-		if DEBUG: print "--- Beginning parsing ---"
+		if verbose: print "--- Beginning parsing ---"
 		tree = yacc.parse(text, lexer=lex, debug=PARSE_DEBUG)
-		print tree.pretty(0, style)
 
 		if Error.errors:
 			errorExit()
 			
-		if DEBUG: print "--- Beginning type checking ---"
+		if verbose: print "--- Beginning type checking ---"
 		TypeChecker(tree).check()
+
+		if Error.errors:
+			errorExit()
+
+		CodeGen(tree).generate()
+
+		if verbose: print "--- Beginning code generation ---"
 	except TooManyErrors:
 		errorExit()
 	except Error, e:

@@ -7,6 +7,17 @@ from environment import env
 # Each of the class names in this file should correspond to a class in the tree.py file
 
 class Document(NodeChecker):
+	def pass1(self):
+		# Define all of the classes
+		for child in self.node.children:
+			child.checker.pass1()
+
+		# Make sure there are no loops in the class hierarchy and that all superclasses exist
+		try:
+			env.checkClassHierarchy()
+		except SymbolError, e:
+			e.display()
+
 	def check(self):
 		for child in self.node.children:
 			child.check()
