@@ -14,7 +14,7 @@ if __name__ == "__main__":
 	from parser import yacc
 	from error import *
 	from type_checking import TypeChecker
-	from code_gen import CodeGen
+	from codegen import CodeGen
 
 	verbose = True # should probably make this a command-line arg
 

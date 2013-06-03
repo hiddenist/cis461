@@ -1,4 +1,4 @@
-def NodeCodeGen(object):
+class NodeCodeGen(object):
 	def __init__(self, node):
 		self.node = node
 		self.token = node.token

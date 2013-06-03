@@ -16,7 +16,7 @@ class Document(NodeChecker):
 		try:
 			env.checkClassHierarchy()
 		except SymbolError, e:
-			e.display()
+			raise e
 
 	def check(self):
 		for child in self.node.children:
