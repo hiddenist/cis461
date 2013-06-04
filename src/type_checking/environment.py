@@ -1,8 +1,12 @@
-from error import SymbolError
+from error import SymbolError, UndefinedClassError
 from settings import SYMBOL_DEBUG as DEBUG, SIMULATE_BASIC
 
 class Environment(object):
 	def __init__(self):
+		# Keep track of classes which have had an error for being undefined.
+		# Since class names have to be uppercase, it's impossible for a user to make a class with this name.
+		self.undefined = set(["undefined"])
+
 		# Variables and their type, for each scope
 		self.O = []
 
@@ -70,14 +74,14 @@ class Environment(object):
 	def enterClassScope(self, c):
 		"Put all class attributes in scope"
 
-		# Create a scope hierarchy for each superclass' attributes
-		parent = self.getSuperClass(c)
-		while parent is not None:
-			if parent in self.C:
-				self.enterScope(self.Oc[parent])
-				parent = self.getSuperClass(parent)
+		# Create a scope hierarchy for this class' and its attributes' defined attrs
+		cls = c
+		while cls is not None:
+			if cls in self.C:
+				self.enterScope(self.Oc[cls])
+				cls = self.getSuperClass(cls)
 			else:
-				parent = None
+				cls = None
 
 		self.enterScope({'this': c, 'super': self.getSuperClass(c)})
 
@@ -104,7 +108,6 @@ class Environment(object):
 		except SymbolError, e:
 			e.ignore()
 			self.Oc[c][v] = T
-			self.defineVar(v, T)
 		else:
 			raise SymbolError("Class '%s' attribute named '%s'" % (c, v)
 				+ " is already defined (perhaps in a superclass)")
@@ -149,20 +152,27 @@ class Environment(object):
 		raise SymbolError("Variable '%s' was not initialized" % v)
 
 	def getMethod(self, C, f):
+		if C in self.undefined:
+			return (None,)
+
 		s = C
 		while s is not None:
 			try:
 				return self.M[(s, f)]
 			except KeyError:
 				s = self.getSuperClass(s)
+
 		raise SymbolError("Class '%s' does not have a method '%s' defined" % (C, f))
 
 	def getSuperClass(self, c):
 		try:
 			return self.C[c]
 		except KeyError:
-			if DEBUG: print type(c), self.C
-			raise SymbolError("Type '%s' has not been defined" % c)
+			if DEBUG: print "DEBUG: Undefined class:", type(c), self.C
+			if c in self.undefined:
+				return "undefined"
+			else:
+				raise UndefinedClassError("Type '%s' has not been defined" % c, c,  self)
 
 	def checkClassHierarchy(self):
 		checked = set()

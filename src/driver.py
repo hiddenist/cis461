@@ -50,6 +50,8 @@ if __name__ == "__main__":
 
 		if Error.errors:
 			errorExit()
+
+		#print tree.pretty(style=style)
 			
 		if verbose: print "--- Beginning type checking ---"
 		TypeChecker(tree).check()

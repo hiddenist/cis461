@@ -31,6 +31,8 @@ class Class(NodeChecker):
 		for feature in self.node.body.children:
 			if isinstance(feature, tree.Def):
 				feature.checker.define(self.node.type.name)
+			elif isinstance(feature, tree.VarInit):
+				feature.id.checker.attrDefine(self.node.type, feature.type)
 
 	def check(self):
 		if not isinstance(self.node.superclass, tree.Native):
@@ -39,11 +41,12 @@ class Class(NodeChecker):
 		env.enterClassScope(self.node.type.name)
 
 		for formal in self.node.formals.children:
+			formal.check()
 			formal.id.checker.attrDefine(self.node.type, formal.type)
 
 		for feature in self.node.body.children:
 			if isinstance(feature, tree.VarInit):
-				feature.id.checker.attrDefine(self.node.type, feature.type)
+				feature.check(define=False)
 			else:
 				feature.check()
 
@@ -82,6 +85,7 @@ class MatchExpr(NodeChecker):
 		types = []
 		nulls = 0
 		for case in self.node.cases:
+			case.check()
 			t = case.type.getType()
 
 			if t.isNull():
@@ -141,13 +145,6 @@ class WhileExpr(NodeChecker):
 		cond_type = self.node.cond.getType()
 		if not getattr(cond_type, 'suppress_errors', False) and not cond_type.isType("Boolean"):
 			TypeCheckError("Loop condition must be a boolean", self.cond.token).report()
-
-
-class Dot(NodeChecker):
-	def getType(self):
-		print "Todo: dot type check"
-		return Type("Null")
-
 
 class AssignExpr(NodeChecker):
 	def getType(self):
@@ -248,33 +245,55 @@ class Call(NodeChecker):
 			c = self.node.method.parent.getType().name
 			n = self.node.method.child.name
 		else:
-			print "What else can a method call be made of?"
+			print "WARNING: I missed something. What else can a method call be made of?"
 
 		try:
-			return c, n, env.getMethod(c, n)
+			m = env.getMethod(c,n)
+			return c, n, m
 		except SymbolError, e:
 			if getattr(c, 'suppress_errors', False):
 				e.ignore()
 			else:
-				raise e
+				e.setToken(self.token)
+				e.report()
+
+			return None
+
 
 	def getType(self):
 		try:
-			return Type(self.getMethod()[-1][-1])
+			m = self.getMethod()
+			if m is None:
+				return Type("undefined", suppress_errors=True)
+
+			t = m[-1][-1]
+			if t is None:
+				return Type("undefined", suppress_errors=True)
+
+			return Type(t)
 		except SymbolError, e:
 			e.setToken(self.token)
 			e.report()
-			return Type("Nothing", suppress_errors=True)
+			return Type("undefined", suppress_errors=True)
 
 	def check(self):
-		c, m, args = self.getMethod()
+		m = self.getMethod()
+		if m is None:
+			return
+		c, m, args = m
 		ret, args = args[-1], args[:-1]
+
+		if ret is None:
+			return
+
 		if len(self.node.actuals.children) != len(args):
 			TypeCheckError("Method '%s' of class '%s' requires %d arguments; received %d"
 				% (m, c, len(args), len(self.node.actuals.children)), self.token).report()
 		else:
 			for i, actual in enumerate(self.node.actuals.children):
 				actual_type = actual.getType()
+				if actual_type.name == "g":
+					raise TypeCheckError("hmmm", actual.token)
 				if not getattr(actual_type, 'suppress_errors', False) and not actual_type.subsetOf(args[i]):
 					TypeCheckError("Provided argument does not match type in method definition;"
 						+ " '%s' is not compatible with '%s'" 
@@ -326,13 +345,19 @@ class VarInit(NodeChecker):
 	def getType(self):
 		return self.node.type.getType()
 	
-	def check(self):
+	def check(self, define=True):
+		self.node.type.check()
 		self.node.value.check()
 		valuetype = self.node.value.getType()
+
 		if not valuetype.subsetOf(self.getType()):
 			TypeCheckError("Value of type '%s' can't be assigned to variable of type '%s'"
 				% (valuetype, self.getType()), self.token).report()
 
+		if define:
+			self.define()
+
+	def define(self):
 		self.node.id.checker.define(self.getType())
 
 class Def(NodeChecker):
@@ -356,6 +381,8 @@ class Def(NodeChecker):
 		args = tuple(f.name for f in self.node.formals.getType())
 		try:
 			super_method = env.getMethod(env.getSuperClass(self.c), self.node.id.name)
+			if super_method == None:
+				return
 			if self.node.override:
 				sargs = super_method[:-1]
 				if len(args) != len(sargs):
@@ -507,8 +534,7 @@ class Type(NodeChecker):
 			s = None
 			
 		if s is None:
-			print "Suppressing errors..."
-			return Type("Nothing", suppress_errors=True)
+			return Type("undefined", suppress_errors=True)
 
 		return Type(s)
 
@@ -545,6 +571,12 @@ class Type(NodeChecker):
 
 	def subsetOf(self, t):
 		"Checks compatibility between types"
+		
+		# "Nothing is compatible with anything - the function does not return"
+		# "undefined" is a special, impossible value to prevent too many errors from being reported
+		if self.name in ("Nothing", "undefined"):
+			return True
+
 		# Null can be any type except for a few specified, built-in types
 		if self.isNull():
 			if isinstance(t, Type):
@@ -563,7 +595,6 @@ class Type(NodeChecker):
 				if getattr(c, 'suppress_errors', False):
 					e.ignore()
 				else:
-					e.setToken(c.token)
 					e.report()
 
 

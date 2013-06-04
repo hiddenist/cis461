@@ -112,3 +112,13 @@ class TypeCheckError(TokenError):
 
 class SymbolError(TokenError):
 	pass
+
+class UndefinedClassError(SymbolError):
+	def __init__(self, string, cls, env):
+		super(UndefinedClassError, self).__init__(string)
+		self.cls = cls
+		self.env = env
+	
+	def report(self):
+		super(UndefinedClassError, self).report()
+		self.env.undefined.add(self.cls)

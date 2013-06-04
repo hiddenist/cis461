@@ -37,9 +37,9 @@ class Node(object):
 		elif DEBUG:
 			print "Warning: checker is not defined"
 
-	def check(self):
+	def check(self, *args, **kwargs):
 		if self.checker is not None:
-			return self.checker.check()
+			return self.checker.check(*args, **kwargs)
 		elif DEBUG:
 			print "Warning: checker is not defined"
 
