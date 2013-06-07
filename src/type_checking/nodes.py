@@ -116,7 +116,8 @@ class Case(NodeChecker):
 	
 	def check(self):
 		env.enterScope()
-		self.node.id.checker.define(self.node.type, shadow=True)
+		if not isinstance(self.node.id, tree.Null):
+			self.node.id.checker.define(self.node.type, shadow=True)
 		self.node.block.check()
 		env.exitScope()
 
@@ -348,11 +349,13 @@ class VarInit(NodeChecker):
 	def check(self, define=True):
 		self.node.type.check()
 		self.node.value.check()
-		valuetype = self.node.value.getType()
 
-		if not valuetype.subsetOf(self.getType()):
-			TypeCheckError("Value of type '%s' can't be assigned to variable of type '%s'"
-				% (valuetype, self.getType()), self.token).report()
+		if not isinstance(self.node.value, tree.Native):
+			valuetype = self.node.value.getType()
+
+			if not valuetype.subsetOf(self.getType()):
+				TypeCheckError("Value of type '%s' can't be assigned to variable of type '%s'"
+					% (valuetype, self.getType()), self.token).report()
 
 		if define:
 			self.define()
