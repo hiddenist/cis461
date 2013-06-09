@@ -275,19 +275,31 @@ initialize:
   ; Allocate space on the heap for the string
   %bytes = add i32 %len, 1
   %strp = call i8* @malloc(i32 %bytes)
+  ; Already returns a char*, no bitcast
 
-  ;; Copy the string into this new space...
-  ; bitcast memory to array of correct size
-  %1 = bitcast i8* %str to [%bytes x i8]*
-  ; load
-  %fullstr = load [%bytes x i8]* %1
-  ; save into malloc space
-  %stra = bitcast i8* %strp to [%bytes x i8]*
-  store [%bytes x i8] %fullstr, %stra
+  ; Copy the string into this new space...
+  %ip = alloca i32
+  store i32 0, i32* %i
+loopbegin:
+  %i = load i32* %ip
+
+  ; new_str[i] = old_str[i]
+  %orig = getelementptr i8* %str, i32 %i
+  %new = getelementptr i8* %strp, i32 %i
+  %chr = load i8* %orig
+  store i8 %chr, i8* %new
+
+  ; ++i
+  %inc = add nsw i32 %i, 1
+  store i32 %i, i32* %ip
+
+  %is_null_char = icmp i8 %orig, 0
+  br i1 %is_null_char, label %loopbegin, label %loopend
+loopend:
   
   ; Store the new string pointer in the str_field field
   %strfield = getelementptr %obj_String* %obj, i32 0, i32 3
-  store i8* %strp, i8** %strfield
+  store i8** %strp, i8*** %strfield
 
   
   ret %obj_String* %obj
