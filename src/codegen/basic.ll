@@ -91,7 +91,7 @@ allocate:
   store %class_IO @IO, %class_IO** %cls_field
 initialize:
   ; Recursively call our superclass' constructor
-  %as_any = bitcast %obj_IO* %obj as %obj_Any*
+  %as_any = bitcast %obj_IO* %obj to %obj_Any*
   call %obj_Any* @Any._constructor(%obj_Any* %as_any)
   
   ret %obj_IO* %obj
@@ -177,7 +177,7 @@ allocate:
   store %class_Int @Int, %class_Int** %cls_field
 initialize:
   ; Recursively call our superclass' constructor
-  %as_any = bitcast %obj_Int* %obj as %obj_Any*
+  %as_any = bitcast %obj_Int* %obj to %obj_Any*
   call %obj_Any* @Any._constructor(%obj_Any* %as_any)
   
   ;;;; Int initialization ;;;;
@@ -257,7 +257,7 @@ allocate:
   store %class_String @String, %class_String** %cls_field
 initialize:
   ; Recursively call our superclass' constructor
-  %as_any = bitcast %obj_String* %obj as %obj_Any*
+  %as_any = bitcast %obj_String* %obj to %obj_Any*
   call %obj_Any* @Any._constructor(%obj_Any* %as_any)
   
   ;;;; String initialization ;;;;
