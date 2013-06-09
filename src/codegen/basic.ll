@@ -4,9 +4,6 @@ target triple = "i386-pc-linux-gnu"
 
 %word = i32
 
-@_constructor = constant i32 1
-@_malloc = constant i32 2
-
 ; Usually I see these at the bottom of LLVM programs.  Why?
 declare noalias i8* @malloc(i32) nounwind
 declare void @abort() noreturn nounwind
