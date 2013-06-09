@@ -19,7 +19,7 @@ declare i32 @strlen(i8*) nounwind readonly
 
 @Any = global %class_Any { 
   %class_Any*                           null,
-  %obj_Any*     ()*                     @Any._constructor,
+  %obj_Any*     (%obj_Any*)*            @Any._constructor,
   %obj_String*  (%obj_Any*)*            @Any.toString,
   %obj_Boolean* (%obj_Any*, %obj_Any*)* @Any.equals 
 }
@@ -55,8 +55,8 @@ define %obj_Boolean* @Any.equals(%obj_Any* %this, %obj_Any* %other) {
 %class_IO = type { 
   %class_Any*,
   %obj_IO*      (%obj_IO*)*,                        ; _constructor
-  %obj_String*  (%obj_Any*, %obj_Any*)*,            ; toString
-  %obj_Boolean* (%obj_Any*, %obj_Any*, %obj_Any*)*, ; equals
+  %obj_String*  (%obj_Any*)*,                       ; toString
+  %obj_Boolean* (%obj_Any*, %obj_Any*)*,            ; equals
   void          (%obj_IO*, %obj_String*)*,          ; abort
   %obj_IO*      (%obj_IO*, %obj_String*)*,          ; out
   %obj_Boolean* (%obj_IO*, %obj_IO*)*,              ; is_null
@@ -111,8 +111,7 @@ define %obj_IO* @IO.out(%obj_IO* %this returned, %obj_String* %str) {
   ret %obj_IO* %this
 }
 
-; Unit doesn't actually have a constructor or destructor defined
-; we just use a global (defined below) for the single instance
+
 %class_Unit = type {
   %class_Any*,
   %obj_Unit*    (%obj_Unit*)*,          ; _constructor
@@ -123,8 +122,7 @@ define %obj_IO* @IO.out(%obj_IO* %this returned, %obj_String* %str) {
 
 @Unit = global %class_Unit {
   %class_Any*                           @Any,
-  %obj_Unit*    (%obj_Unit*)*           null,
-  %obj_Unit*    (%obj_Unit*)*           null,
+  %obj_Unit*    (%obj_Unit*)*           null, ; No constructor - only one instance.
   %obj_String*  (%obj_Any*)*            @Any.toString,
   %obj_Boolean* (%obj_Any*, %obj_Any*)* @Any.equals
 }
@@ -216,7 +214,7 @@ initialize:
 
 %class_String = type { 
   %class_Any*,
-  %obj_String*  (i8*)*,                                ; _constructor
+  %obj_String*  (%obj_String*, i8*)*,                  ; _constructor
   %obj_String*  (%obj_String*)*,                       ; toString
   %obj_Boolean* (%obj_String*, %obj_Any*)*,            ; equals
   %obj_Int*     (%obj_String*)*,                       ; length
@@ -275,25 +273,31 @@ initialize:
   ; Allocate space on the heap for the string
   %bytes = add i32 %len, 1
   %strp = call i8* @malloc(i32 %bytes)
-  ; Already returns a char*, no bitcast
+  ; Already returns a char*, no bitcast necessary
 
   ; Copy the string into this new space...
+
+  ; Loop code should be equivalent (in functionality) to something like this:
+  ;
+  ; int i = 0;
+  ; do {
+  ;   new_str[i] = str[i];
+  ; } while (str[i++] != '\0'); 
+  ;
+
   %ip = alloca i32
   store i32 0, i32* %i
 loopbegin:
   %i = load i32* %ip
 
-  ; new_str[i] = old_str[i]
   %orig = getelementptr i8* %str, i32 %i
   %new = getelementptr i8* %strp, i32 %i
   %chr = load i8* %orig
   store i8 %chr, i8* %new
 
-  ; ++i
   %inc = add nsw i32 %i, 1
   store i32 %i, i32* %ip
-
-  %is_null_char = icmp i8 %orig, 0
+  %is_null_char = icmp i8 %chr, 0
   br i1 %is_null_char, label %loopbegin, label %loopend
 loopend:
   
@@ -307,10 +311,10 @@ loopend:
 
 %class_Symbol = type { 
   %class_Any*,
-  %obj_Symbol*  (%obj_Symbol*)*,         ; _constructor
-  %obj_String*  (%obj_Symbol*)*,         ; toString
-  %obj_Boolean* (%obj_Any*, %obj_Any*)*, ; equals
-  %obj_Int*     (%obj_Symbol)*           ; hashCode
+  %obj_Symbol*  (%obj_Symbol*, %obj_String*)*, ; _constructor
+  %obj_String*  (%obj_Symbol*)*,               ; toString
+  %obj_Boolean* (%obj_Any*, %obj_Any*)*,       ; equals
+  %obj_Int*     (%obj_Symbol)*                 ; hashCode
 }
 %obj_Symbol = type { 
   %class_Symbol*,
@@ -320,38 +324,38 @@ loopend:
 }
 
 @Symbol = global { 
-  %class_Any*                                @Any,
-  %obj_Symbol*  (%obj_Symbol*, %obj_String)* @Symbol._constructor,
-  %obj_String*  (%obj_Symbol*)*              @Symbol.toString,
-  %obj_Boolean* (%obj_Any*, %obj_Any*)*      @Any.equals,
-  %obj_Int*     (%obj_Symbol)*               @Symbol.hashCode
+  %class_Any*                                 @Any,
+  %obj_Symbol*  (%obj_Symbol*, %obj_String*)* @Symbol._constructor,
+  %obj_String*  (%obj_Symbol*)*               @Symbol.toString,
+  %obj_Boolean* (%obj_Any*, %obj_Any*)*       @Any.equals,
+  %obj_Int*     (%obj_Symbol)*                @Symbol.hashCode
 }
 
 %class_ArrayAny = type {
   %class_Any*,
-  %obj_ArrayAny* (%obj_ArrayAny*, %obj_Int*)*,           ; _constructor
-  %obj_String*   (%obj_Any*)*,                           ; toString
-  %obj_Boolean*  (%obj_Any*)*,                           ; equals
-  %obj_Int*      (%obj_ArrayAny*)*,                      ; length
-  %obj_ArrayAny* (%obj_ArrayAny*, %obj_Int*)*,           ; resize 
-  %obj_Any       (%obj_ArrayAny*, %obj_Int*)*,           ; get
-  %obj_Any       (%obj_ArrayAny*, %obj_Int*, %obj_Any*)* ; set
+  %obj_ArrayAny* (%obj_ArrayAny*, %obj_Int*)*,            ; _constructor
+  %obj_String*   (%obj_Any*)*,                            ; toString
+  %obj_Boolean*  (%obj_Any*)*,                            ; equals
+  %obj_Int*      (%obj_ArrayAny*)*,                       ; length
+  %obj_ArrayAny* (%obj_ArrayAny*, %obj_Int*)*,            ; resize 
+  %obj_Any*       (%obj_ArrayAny*, %obj_Int*)*,           ; get
+  %obj_Any*       (%obj_ArrayAny*, %obj_Int*, %obj_Any*)* ; set
 }
 %obj_ArrayAny = type {
   %class_ArrayAny*,
   %obj_Int*,      ; length
-  [0 x %obj_Any*] ; array_field
+  [0 x %obj_Any*]* ; array_field
 }
 
 @ArrayAny = global {
-  %class_Any*                                            @Any,
-  %obj_ArrayAny* (%obj_ArrayAny*, %obj_Int*)*            @ArrayAny._constructor,
-  %obj_String*   (%obj_Any*)*                            @Any.toString,
-  %obj_Boolean*  (%obj_Any*)*                            @Any.equals,
-  %obj_Int*      (%obj_ArrayAny*)*                       @ArrayAny.length,
-  %obj_ArrayAny* (%obj_ArrayAny*, %obj_Int*)*            @ArrayAny.resize,
-  %obj_Any       (%obj_ArrayAny*, %obj_Int*)*            @ArrayAny.get,
-  %obj_Any       (%obj_ArrayAny*, %obj_Int*, %obj_Any*)* @ArrayAny.set
+  %class_Any*                                             @Any,
+  %obj_ArrayAny* (%obj_ArrayAny*, %obj_Int*)*             @ArrayAny._constructor,
+  %obj_String*   (%obj_Any*)*                             @Any.toString,
+  %obj_Boolean*  (%obj_Any*)*                             @Any.equals,
+  %obj_Int*      (%obj_ArrayAny*)*                        @ArrayAny.length,
+  %obj_ArrayAny* (%obj_ArrayAny*, %obj_Int*)*             @ArrayAny.resize,
+  %obj_Any*       (%obj_ArrayAny*, %obj_Int*)*            @ArrayAny.get,
+  %obj_Any*       (%obj_ArrayAny*, %obj_Int*, %obj_Any*)* @ArrayAny.set
 }
 
 define void @main() {
