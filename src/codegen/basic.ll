@@ -2,7 +2,7 @@
 
 target triple = "i386-pc-linux-gnu"
 
-; Usually I see these at the bottom of LLVM programs.  Why?
+; Usually I see these at the bottom of LLVM programs.  Why not the top?
 declare noalias i8* @malloc(i32) nounwind
 declare void @abort() noreturn nounwind
 declare i32 @puts(i8*)
@@ -26,22 +26,27 @@ declare i32 @strlen(i8*) nounwind readonly
 
 define %obj_Any* @Any._constructor(%obj_Any* %obj) {
   %isnull = icmp eq %obj_Any* %obj, null
+  %objstk = alloca %obj_Any*
+  store %obj_Any* %obj, %obj_Any** %objstk
   br i1 %isnull, label %allocate, label %initialize
 allocate: 
   %space = call i8* @malloc(i32 4)
-  %obj = bitcast i8* %space to %obj_Any*
-  %cls_field = getelementptr inbounds %obj_Any* %obj, i32 0, i32 0
-  store %class_Any @Any, %class_Any** %cls_field
+  %newobj = bitcast i8* %space to %obj_Any*
+  %cls_field = getelementptr inbounds %obj_Any* %newobj, i32 0, i32 0
+  store %obj_Any* %newobj, %obj_Any** %objstk
+  store %class_Any* @Any, %class_Any** %cls_field
+  br label %initialize
 initialize:
   ; if Any had a superclass, this is where we would recursively call its constructor
-  ret %obj_Any* %obj
+  %ret = load %obj_Any** %objstk
+  ret %obj_Any* %ret
 }
 
 ; let's just use c-style strings to make c functions easier
 @.Any_str = constant [4 x i8] c"Any\00" 
 define %obj_String* @Any.toString(%obj_Any* %this) {
-  %str_rep = getelementptr [3 x i8]* @.Any_str, i32 0, i64 0
-  %obj = call %obj_String* @String._constructor(%obj_String* null, i8* %str)
+  %str_rep = getelementptr [4 x i8]* @.Any_str, i32 0, i32 0
+  %obj = call %obj_String* @String._constructor(%obj_String* null, i8* %str_rep)
   ret %obj_String* %obj
 }
 
@@ -83,18 +88,24 @@ define %obj_Boolean* @Any.equals(%obj_Any* %this, %obj_Any* %other) {
 
 define %obj_IO* @IO._constructor(%obj_IO* %obj) {
   %isnull = icmp eq %obj_IO* %obj, null
+  %objstk = alloca %obj_IO*
+  store %obj_IO* %obj, %obj_IO** %objstk
   br i1 %isnull, label %allocate, label %initialize
 allocate: 
   %space = call i8* @malloc(i32 4)
-  %obj = bitcast i8* %space to %obj_IO*
-  %cls_field = getelementptr inbounds %obj_IO* %obj, i32 0, i32 0
-  store %class_IO @IO, %class_IO** %cls_field
+  %newobj = bitcast i8* %space to %obj_IO*
+  %cls_field = getelementptr inbounds %obj_IO* %newobj, i32 0, i32 0
+  store %obj_IO* %newobj, %obj_IO** %objstk
+  store %class_IO* @IO, %class_IO** %cls_field
+  br label %initialize
 initialize:
+  %ret = load %obj_IO** %objstk
+  
   ; Recursively call our superclass' constructor
-  %as_any = bitcast %obj_IO* %obj to %obj_Any*
+  %as_any = bitcast %obj_IO* %ret to %obj_Any*
   call %obj_Any* @Any._constructor(%obj_Any* %as_any)
   
-  ret %obj_IO* %obj
+  ret %obj_IO* %ret
 }
 
 define void @IO.abort(%obj_IO* %this, %obj_String* %msg) noreturn nounwind {
@@ -103,10 +114,10 @@ define void @IO.abort(%obj_IO* %this, %obj_String* %msg) noreturn nounwind {
 
 define %obj_IO* @IO.out(%obj_IO* %this returned, %obj_String* %str) {
   ; Get str_field from the String %str
-  %str_ptr_loc = getelementptr %obj_String* %str, i32 0, i32 3
-  %str_ptr = load i8** %str_ptr_loc
+  %cstr_ptr = getelementptr %obj_String* %str, i32 0, i32 2
+  %cstr = load i8** %cstr_ptr
   
-  call i32 @puts(i8* %str_ptr)
+  call i32 @puts(i8* %cstr)
   
   ret %obj_IO* %this
 }
@@ -148,7 +159,7 @@ define %obj_IO* @IO.out(%obj_IO* %this returned, %obj_String* %str) {
   i32* ; value
 }
 
-@Int = global { 
+@Int = global %class_Int { 
   %class_Any*                           @Any,
   %obj_Int*     (%obj_Int*, i32)*       @Int._constructor,
   %obj_String*  (%obj_Int*)*            @Int.toString,
@@ -164,33 +175,49 @@ define %obj_IO* @IO.out(%obj_IO* %this returned, %obj_String* %str) {
 
 define %obj_Int* @Int._constructor(%obj_Int* %obj, i32 %val) {
   %isnull = icmp eq %obj_Int* %obj, null
+  %objstk = alloca %obj_Int*
+  store %obj_Int* %obj, %obj_Int** %objstk
   br i1 %isnull, label %allocate, label %initialize
 allocate: 
   %space = call i8* @malloc(i32 8)
-
-  ; do I need to store this on the stack ever?
-  %obj = bitcast i8* %space to %obj_Int*
-
-  %cls_field = getelementptr inbounds %obj_Int* %obj, i32 0, i32 0
-  store %class_Int @Int, %class_Int** %cls_field
+  %newobj = bitcast i8* %space to %obj_Int*
+  %cls_field = getelementptr inbounds %obj_Int* %newobj, i32 0, i32 0
+  store %obj_Int* %newobj, %obj_Int** %objstk
+  store %class_Int* @Int, %class_Int** %cls_field
+  br label %initialize
 initialize:
+  %ret = load %obj_Int** %objstk
   ; Recursively call our superclass' constructor
-  %as_any = bitcast %obj_Int* %obj to %obj_Any*
+  %as_any = bitcast %obj_Int* %ret to %obj_Any*
   call %obj_Any* @Any._constructor(%obj_Any* %as_any)
   
   ;;;; Int initialization ;;;;
   
   ; create heap space for the integer value
-  %space = call i8* @malloc(i32 4)
-  %intp = bitcast i8* %space to i32*
+  %t1 = call i8* @malloc(i32 4)
+  %intp = bitcast i8* %t1 to i32*
   store i32 %val, i32* %intp
 
   ; store the integer pointer to the value field
-  %valfield = getelementptr %obj_Int* %obj, i32 0, i32 3
+  %valfield = getelementptr %obj_Int* %ret, i32 0, i32 1
   store i32* %intp, i32** %valfield
 
-  ret %obj_Int* %obj
+  ret %obj_Int* %ret
 }
+
+@.sprintf_format = constant [3 x i8] c"%d\00" 
+define %obj_String* @Int.toString(%obj_Int* %this) {
+	%format = getelementptr [3 x i8]* @.sprintf_format, i32 0, i32 0
+	; biggest 32 bit int is 10 chars, and maybe a -, plus null char, 
+	; and some extra just in case I've forgotten something (it's just stack space)
+	%buffer = alloca i8, i32 16
+	%valpp = getelementptr %obj_Int* %this, i32 0, i32 1
+	%valp = load i32** %valpp
+	%val = load i32* %valp
+	call i32 (i8*, i8*, ...)* @sprintf(i8* %buffer, i8* %format , i32 %val)
+	%str = call %obj_String* @String._constructor(%obj_String* null, i8* %buffer)
+	ret %obj_String* %str
+} 
 
 
 %class_Boolean = type { 
@@ -204,7 +231,7 @@ initialize:
   i1 ; value
 }
 
-@Boolean = global {
+@Boolean = global %class_Boolean {
   %class_Any*                               @Any,
   %obj_Boolean* (%obj_Boolean*, i1)*        @Boolean._constructor,
   %obj_String*  (%obj_Boolean*)*            @Boolean.toString,
@@ -229,7 +256,7 @@ initialize:
   i8*        ; str_field
 }
 
-@String = global {
+@String = global %class_String {
   %class_Any*                                         @Any,
   %obj_String*  (%obj_String*, i8*)*                  @String._constructor,
   %obj_String*  (%obj_String*)*                       @String.toString,
@@ -244,18 +271,21 @@ initialize:
 
 define %obj_String* @String._constructor(%obj_String* %obj, i8* %str) {
   %isnull = icmp eq %obj_String* %obj, null
+  %objstk = alloca %obj_String*
+  store %obj_String* %obj, %obj_String** %objstk
   br i1 %isnull, label %allocate, label %initialize
 allocate: 
   %space = call i8* @malloc(i32 12)
-
-  ; do I need to store this on the stack ever?
-  %obj = bitcast i8* %space to %obj_String*
-
-  %cls_field = getelementptr inbounds %obj_String* %obj, i32 0, i32 0
-  store %class_String @String, %class_String** %cls_field
+  %newobj = bitcast i8* %space to %obj_String*
+  %cls_field = getelementptr inbounds %obj_String* %newobj, i32 0, i32 0
+  store %obj_String* %newobj, %obj_String** %objstk
+  store %class_String* @String, %class_String** %cls_field
+  br label %initialize
 initialize:
+  %ret = load %obj_String** %objstk
+  
   ; Recursively call our superclass' constructor
-  %as_any = bitcast %obj_String* %obj to %obj_Any*
+  %as_any = bitcast %obj_String* %ret to %obj_Any*
   call %obj_Any* @Any._constructor(%obj_Any* %as_any)
   
   ;;;; String initialization ;;;;
@@ -267,7 +297,7 @@ initialize:
   %int = call %obj_Int* @Int._constructor(%obj_Int* null, i32 %len)
 
   ; Store the Int in the length field
-  %lenfield = getelementptr %obj_String* %obj, i32 0, i32 2
+  %lenfield = getelementptr %obj_String* %ret, i32 0, i32 1
   store %obj_Int* %int, %obj_Int** %lenfield
   
   ; Allocate space on the heap for the string
@@ -276,8 +306,7 @@ initialize:
   ; Already returns a char*, no bitcast necessary
 
   ; Copy the string into this new space...
-
-  ; Loop code should be equivalent (in functionality) to something like this:
+  ; Following loop code should be functionally equivalent to something like this:
   ;
   ; int i = 0;
   ; do {
@@ -286,7 +315,8 @@ initialize:
   ;
 
   %ip = alloca i32
-  store i32 0, i32* %i
+  store i32 0, i32* %ip
+  br label %loopbegin
 loopbegin:
   %i = load i32* %ip
 
@@ -296,24 +326,27 @@ loopbegin:
   store i8 %chr, i8* %new
 
   %inc = add nsw i32 %i, 1
-  store i32 %i, i32* %ip
-  %is_null_char = icmp i8 %chr, 0
-  br i1 %is_null_char, label %loopbegin, label %loopend
+  store i32 %inc, i32* %ip
+  %is_null_char = icmp eq i8 %chr, 0
+  br i1 %is_null_char, label %loopend, label %loopbegin
 loopend:
   
   ; Store the new string pointer in the str_field field
-  %strfield = getelementptr %obj_String* %obj, i32 0, i32 3
-  store i8** %strp, i8*** %strfield
+  %strfield = getelementptr %obj_String* %ret, i32 0, i32 2
+  store i8* %strp, i8** %strfield
 
-  
-  ret %obj_String* %obj
+  ret %obj_String* %ret
+}
+
+define %obj_String* @String.toString(%obj_String* %this) {
+	ret %obj_String* %this
 }
 
 %class_Symbol = type { 
   %class_Any*,
   %obj_Symbol*  (%obj_Symbol*, %obj_String*)*, ; _constructor
   %obj_String*  (%obj_Symbol*)*,               ; toString
-  %obj_Boolean* (%obj_Any*, %obj_Any*)*,       ; equals
+  %obj_Boolean* (%obj_Symbol*, %obj_Any*)*,    ; equals
   %obj_Int*     (%obj_Symbol)*                 ; hashCode
 }
 %obj_Symbol = type { 
@@ -323,11 +356,11 @@ loopend:
   %obj_Int*      ; hash
 }
 
-@Symbol = global { 
+@Symbol = global %class_Symbol { 
   %class_Any*                                 @Any,
   %obj_Symbol*  (%obj_Symbol*, %obj_String*)* @Symbol._constructor,
   %obj_String*  (%obj_Symbol*)*               @Symbol.toString,
-  %obj_Boolean* (%obj_Any*, %obj_Any*)*       @Any.equals,
+  %obj_Boolean* (%obj_Any*, %obj_Any*)*       @Symbol.equals,
   %obj_Int*     (%obj_Symbol)*                @Symbol.hashCode
 }
 
@@ -347,7 +380,7 @@ loopend:
   [0 x %obj_Any*]* ; array_field
 }
 
-@ArrayAny = global {
+@ArrayAny = global %class_ArrayAny {
   %class_Any*                                             @Any,
   %obj_ArrayAny* (%obj_ArrayAny*, %obj_Int*)*             @ArrayAny._constructor,
   %obj_String*   (%obj_Any*)*                             @Any.toString,
