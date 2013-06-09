@@ -276,8 +276,14 @@ initialize:
   %bytes = add i32 %len, 1
   %strp = call i8* @malloc(i32 %bytes)
 
-  ; Copy the string into this new space
-  ; todo: yeah... in a second
+  ;; Copy the string into this new space...
+  ; bitcast memory to array of correct size
+  %1 = bitcast i8* %str to [%bytes x i8]*
+  ; load
+  %fullstr = load [%bytes x i8]* %1
+  ; save into malloc space
+  %stra = bitcast i8* %strp to [%bytes x i8]*
+  store [%bytes x i8] %fullstr, %stra
   
   ; Store the new string pointer in the str_field field
   %strfield = getelementptr %obj_String* %obj, i32 0, i32 3
