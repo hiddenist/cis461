@@ -129,16 +129,16 @@ define %obj_IO* @IO.out(%obj_IO* %this returned, %obj_String* %str) {
   %obj_String*  (%obj_Any*)*,           ; toString
   %obj_Boolean* (%obj_Any*, %obj_Any*)* ; equals
 }
-%obj_Unit = type { %class_Any* }
+%obj_Unit = type { %class_Unit* }
 
 @Unit = global %class_Unit {
-  %class_Any*                           @Any,
-  %obj_Unit*    (%obj_Unit*)*           null, ; No constructor - only one instance.
-  %obj_String*  (%obj_Any*)*            @Any.toString,
-  %obj_Boolean* (%obj_Any*, %obj_Any*)* @Any.equals
+  %class_Any*                            @Any,
+  %obj_Unit*    (%obj_Unit*)*            null, ; No constructor - only one instance.
+  %obj_String*  (%obj_Unit*)*            @Unit.toString,
+  %obj_Boolean* (%obj_Unit*, %obj_Any*)* @Unit.equals
 }
 ; Since there is only one instance of unit, it can be a global.
-@Unit_obj = global %obj_Unit { %class_Any* @Any }
+@the_Unit = global %obj_Unit { %class_Unit* @Unit }
 
 
 %class_Int = type { 
@@ -146,13 +146,13 @@ define %obj_IO* @IO.out(%obj_IO* %this returned, %obj_String* %str) {
   %obj_Int*     (%obj_Int*, i32)*,       ; _constructor
   %obj_String*  (%obj_Int*)*,            ; toString
   %obj_Boolean* (%obj_Int*, %obj_Any*)*, ; equals
+  %obj_Boolean* (%obj_Int*, %obj_Int*)*, ; _lt
+  %obj_Boolean* (%obj_Int*, %obj_Int*)*  ; _le
   %obj_Int*     (%obj_Int*, %obj_Int*)*, ; _add
   %obj_Int*     (%obj_Int*, %obj_Int*)*, ; _sub
   %obj_Int*     (%obj_Int*, %obj_Int*)*, ; _mul
   %obj_Int*     (%obj_Int*, %obj_Int*)*, ; _div
   %obj_Int*     (%obj_Int*, %obj_Int*)*, ; _neg
-  %obj_Boolean* (%obj_Int*, %obj_Int*)*, ; _lt
-  %obj_Boolean* (%obj_Int*, %obj_Int*)*  ; _le
 }
 %obj_Int = type { 
   %class_Int*,
@@ -164,13 +164,13 @@ define %obj_IO* @IO.out(%obj_IO* %this returned, %obj_String* %str) {
   %obj_Int*     (%obj_Int*, i32)*       @Int._constructor,
   %obj_String*  (%obj_Int*)*            @Int.toString,
   %obj_Boolean* (%obj_Int*, %obj_Any*)* @Int.equals,
+  %obj_Boolean* (%obj_Int*, %obj_Int*)* @Int._lt,
+  %obj_Boolean* (%obj_Int*, %obj_Int*)* @Int._le
   %obj_Int*     (%obj_Int*, %obj_Int*)* @Int._add,
   %obj_Int*     (%obj_Int*, %obj_Int*)* @Int._sub,
   %obj_Int*     (%obj_Int*, %obj_Int*)* @Int._mul,
   %obj_Int*     (%obj_Int*, %obj_Int*)* @Int._div,
   %obj_Int*     (%obj_Int*, %obj_Int*)* @Int._neg,
-  %obj_Boolean* (%obj_Int*, %obj_Int*)* @Int._lt,
-  %obj_Boolean* (%obj_Int*, %obj_Int*)* @Int._le
 }
 
 define %obj_Int* @Int._constructor(%obj_Int* %obj, i32 %val) {
@@ -205,19 +205,82 @@ initialize:
   ret %obj_Int* %ret
 }
 
+define i32 @.get_int_val(%obj_Int* %int) {
+  %ipp = getelementptr %obj_Int* %int, i32 0, i32 1
+  %ip = load i32** %ipp
+  %val = load i32* %ip
+  ret i32 %val
+}
+
 @.sprintf_format = constant [3 x i8] c"%d\00" 
+
 define %obj_String* @Int.toString(%obj_Int* %this) {
 	%format = getelementptr [3 x i8]* @.sprintf_format, i32 0, i32 0
 	; biggest 32 bit int is 10 chars, and maybe a -, plus null char, 
 	; and some extra just in case I've forgotten something (it's just stack space)
 	%buffer = alloca i8, i32 16
-	%valpp = getelementptr %obj_Int* %this, i32 0, i32 1
-	%valp = load i32** %valpp
-	%val = load i32* %valp
+	%val = call i32 @.get_int_val(%obj_Int* %this)
 	call i32 (i8*, i8*, ...)* @sprintf(i8* %buffer, i8* %format , i32 %val)
 	%str = call %obj_String* @String._constructor(%obj_String* null, i8* %buffer)
 	ret %obj_String* %str
 } 
+
+define %obj_Boolean* @Int.equals(%obj_Int* %this, %obj_Int* %that) {
+  %lhs = call i32 @.get_int_val(%obj_Int* %this)
+  %rhs = call i32 @.get_int_val(%obj_Int* %that)
+  %eq = icmp eq i32 %lhs, %rhs
+  %bool = call %obj_Boolean* @Boolean._constructor(%obj_Boolean* null, i1 %eq)
+  ret %obj_Boolean* %bool
+}
+
+define %obj_Boolean* @Int._lt(%obj_Int* %this, %obj_Int* %that) {
+  %lhs = call i32 @.get_int_val(%obj_Int* %this)
+  %rhs = call i32 @.get_int_val(%obj_Int* %that)
+  %eq = icmp slt i32 %lhs, %rhs
+  %bool = call %obj_Boolean* @Boolean._constructor(%obj_Boolean* null, i1 %eq)
+  ret %obj_Boolean* %bool
+}
+
+define %obj_Boolean* @Int._le(%obj_Int* %this, %obj_Int* %that) {
+  %lhs = call i32 @.get_int_val(%obj_Int* %this)
+  %rhs = call i32 @.get_int_val(%obj_Int* %that)
+  %eq = icmp sle i32 %lhs, %rhs
+  %bool = call %obj_Boolean* @Boolean._constructor(%obj_Boolean* null, i1 %eq)
+  ret %obj_Boolean* %bool
+}
+
+define %obj_Int* @Int._add(%obj_Int* %this, %obj_Int* %that) {
+  %lhs = call i32 @.get_int_val(%obj_Int* %this)
+  %rhs = call i32 @.get_int_val(%obj_Int* %that)
+  %val = add i32 %lhs, %rhs
+  %newInt = call %obj_Int* @Int._constructor(%obj_Int* null, i32 %val)
+  ret %obj_Int* %newInt
+}
+
+define %obj_Int* @Int._sub(%obj_Int* %this, %obj_Int* %that) {
+  %lhs = call i32 @.get_int_val(%obj_Int* %this)
+  %rhs = call i32 @.get_int_val(%obj_Int* %that)
+  %val = sub i32 %lhs, %rhs
+  %newInt = call %obj_Int* @Int._constructor(%obj_Int* null, i32 %val)
+  ret %obj_Int* %newInt
+}
+
+define %obj_Int* @Int._mul(%obj_Int* %this, %obj_Int* %that) {
+  %lhs = call i32 @.get_int_val(%obj_Int* %this)
+  %rhs = call i32 @.get_int_val(%obj_Int* %that)
+  %val = mul i32 %lhs, %rhs
+  %newInt = call %obj_Int* @Int._constructor(%obj_Int* null, i32 %val)
+  ret %obj_Int* %newInt
+}
+
+define %obj_Int* @Int._div(%obj_Int* %this, %obj_Int* %that) {
+  %lhs = call i32 @.get_int_val(%obj_Int* %this)
+  %rhs = call i32 @.get_int_val(%obj_Int* %that)
+  %val = sdiv i32 %lhs, %rhs
+  %newInt = call %obj_Int* @Int._constructor(%obj_Int* null, i32 %val)
+  ret %obj_Int* %newInt
+}
+
 
 
 %class_Boolean = type { 
@@ -228,7 +291,7 @@ define %obj_String* @Int.toString(%obj_Int* %this) {
 }
 %obj_Boolean = type { 
   %class_Boolean*,
-  i1 ; value
+  i1* ; value
 }
 
 @Boolean = global %class_Boolean {
@@ -237,6 +300,61 @@ define %obj_String* @Int.toString(%obj_Int* %this) {
   %obj_String*  (%obj_Boolean*)*            @Boolean.toString,
   %obj_Boolean* (%obj_Boolean*, %obj_Any*)* @Boolean.equals
 }
+
+define %obj_Boolean* @Boolean._constructor(%obj_Boolean* %obj, i1 %val) {
+  %objstk = alloca %obj_Boolean*
+  store %obj_Boolean* %obj, %obj_Boolean** %objstk
+  %isnull = icmp eq %obj_Boolean* %obj, null
+  br i1 %isnull, label %allocate, label %initialize
+allocate: 
+  %space = call i8* @malloc(i32 8)
+  %newobj = bitcast i8* %space to %obj_Boolean*
+  %cls_field = getelementptr inbounds %obj_Boolean* %newobj, i32 0, i32 0
+  store %obj_Boolean* %newobj, %obj_Boolean** %objstk
+  store %class_Boolean* @Boolean, %class_Boolean** %cls_field
+  br label %initialize
+initialize:
+  %ret = load %obj_Boolean** %objstk
+  ; Recursively call our superclass' constructor
+  %as_any = bitcast %obj_Boolean* %ret to %obj_Any*
+  call %obj_Any* @Any._constructor(%obj_Any* %as_any)
+  
+  ;;;; Boolean initialization ;;;;
+  
+  ; create heap space for the bool value
+  %t1 = call i8* @malloc(i32 1) 
+  ; wasted bits, since malloc can't allocate less than one bit - interestingly, it might be more 
+  ; efficient on some architectures to allocate a full 32 bits for a boolean.
+  %bp = bitcast i8* %t1 to i1*
+  store i1 %val, i1* %bp
+
+  ; store the bool pointer to the value field
+  %valfield = getelementptr %obj_Boolean* %ret, i32 0, i32 1
+  store i1* %bp, i1** %valfield
+
+  ret %obj_Boolean* %ret
+}
+
+@.true_str = constant [ 5 x i8 ] c"true\00";
+@.false_str = constant [ 6 x i8 ] c"false\00";
+define %obj_String* @Boolean.toString(%obj_Boolean* %this) {
+  %str = alloca i8*
+  %val = call i1 @.get_bool_val(%obj_Boolean* %this)
+  br i1 %val, label %if, label %else
+if:
+  %true = getelementptr [5 x i8]* @.true_str, i32 0, i32 0
+  store i8* %true, i8** %str
+  br label %fi
+else:
+  %false = getelementptr [6 x i8]* @.false_str, i32 0, i32 0
+  store i8* %false, i8** %str
+  br label %fi
+fi:
+  %str_rep = load i8** %str
+  %obj = call %obj_String* @String._constructor(%obj_String* null, i8* %str_rep)
+  ret %obj_String* %obj
+}
+
 
 
 %class_String = type { 
@@ -360,19 +478,19 @@ define %obj_String* @String.toString(%obj_String* %this) {
   %class_Any*                                 @Any,
   %obj_Symbol*  (%obj_Symbol*, %obj_String*)* @Symbol._constructor,
   %obj_String*  (%obj_Symbol*)*               @Symbol.toString,
-  %obj_Boolean* (%obj_Any*, %obj_Any*)*       @Symbol.equals,
+  %obj_Boolean* (%obj_Symbol*, %obj_Any*)*    @Symbol.equals,
   %obj_Int*     (%obj_Symbol)*                @Symbol.hashCode
 }
 
 %class_ArrayAny = type {
   %class_Any*,
   %obj_ArrayAny* (%obj_ArrayAny*, %obj_Int*)*,            ; _constructor
-  %obj_String*   (%obj_Any*)*,                            ; toString
-  %obj_Boolean*  (%obj_Any*)*,                            ; equals
+  %obj_String*   (%obj_ArrayAny*)*,                       ; toString
+  %obj_Boolean*  (%obj_ArrayAny*)*,                       ; equals
   %obj_Int*      (%obj_ArrayAny*)*,                       ; length
   %obj_ArrayAny* (%obj_ArrayAny*, %obj_Int*)*,            ; resize 
-  %obj_Any*       (%obj_ArrayAny*, %obj_Int*)*,           ; get
-  %obj_Any*       (%obj_ArrayAny*, %obj_Int*, %obj_Any*)* ; set
+  %obj_Any*      (%obj_ArrayAny*, %obj_Int*)*,            ; get
+  %obj_Any*      (%obj_ArrayAny*, %obj_Int*, %obj_Any*)*  ; set
 }
 %obj_ArrayAny = type {
   %class_ArrayAny*,
@@ -383,12 +501,12 @@ define %obj_String* @String.toString(%obj_String* %this) {
 @ArrayAny = global %class_ArrayAny {
   %class_Any*                                             @Any,
   %obj_ArrayAny* (%obj_ArrayAny*, %obj_Int*)*             @ArrayAny._constructor,
-  %obj_String*   (%obj_Any*)*                             @Any.toString,
-  %obj_Boolean*  (%obj_Any*)*                             @Any.equals,
+  %obj_String*   (%obj_ArrayAny*)*                        @ArrayAny.toString,
+  %obj_Boolean*  (%obj_ArrayAny*)*                        @ArrayAny.equals,
   %obj_Int*      (%obj_ArrayAny*)*                        @ArrayAny.length,
   %obj_ArrayAny* (%obj_ArrayAny*, %obj_Int*)*             @ArrayAny.resize,
-  %obj_Any*       (%obj_ArrayAny*, %obj_Int*)*            @ArrayAny.get,
-  %obj_Any*       (%obj_ArrayAny*, %obj_Int*, %obj_Any*)* @ArrayAny.set
+  %obj_Any*      (%obj_ArrayAny*, %obj_Int*)*             @ArrayAny.get,
+  %obj_Any*      (%obj_ArrayAny*, %obj_Int*, %obj_Any*)*  @ArrayAny.set
 }
 
 define void @main() {
