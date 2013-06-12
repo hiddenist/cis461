@@ -139,6 +139,7 @@ class IfExpr(NodeChecker):
     return Type.typeJoin(self.node.true.getType(), self.node.false.getType())
 
   def check(self):
+    self.node.type = self.getType()
     self.node.cond.check()
     self.node.true.check()
     self.node.false.check()
@@ -165,7 +166,7 @@ class AssignExpr(NodeChecker):
 
   def check(self):
     self.node.left.check()
-    self.node.left.check()
+    self.node.right.check()
     ltype = self.node.left.getType()
     rtype = self.node.right.getType()
 
@@ -179,6 +180,10 @@ class AssignExpr(NodeChecker):
 class CompExpr(NodeChecker):
   def getType(self):
     return Type("Boolean")
+
+  def check(self):
+    self.node.left.check()
+    self.node.right.check()
 
 class IntCompExpr(CompExpr):
   def check(self):
@@ -290,6 +295,9 @@ class Call(NodeChecker):
       return Type("undefined", suppress_errors=True)
 
   def check(self):
+    if hasattr(self.node, 'method') and isinstance(self.node.method, tree.Dot):
+      self.node.method.parent.check()
+
     m = self.getMethod()
     if m is None:
       return
@@ -323,7 +331,11 @@ class Null(NodeChecker):
 
 class This(NodeChecker):
   def getType(self):
+    self.node.static = "%this"
     return Type(env.getVarType('this'))
+
+  def check(self):
+    self.getType()
 
 class Unit(NodeChecker):
   def getType(self):
@@ -442,8 +454,9 @@ class Def(NodeChecker):
 
     env.enterScope()
     
-    for formal in self.node.formals.children:
-      formal.id.checker.define(formal.type.getType(), shadow=True)
+    for i, formal in enumerate(self.node.formals.children):
+      formal.id.checker.define(formal.type.getType(), shadow=True, static="%%arg%d" % i)
+      formal.id.check()
 
     self.node.type.check()
 
@@ -475,10 +488,15 @@ class Identifier(NodeChecker):
         e.report()
 
   def check(self):
-    self.node.static = env.getVarStatic(self.node.name)
-    self.node.type = self.getType()
+    try:
+     ty, static = env.getVar(self.node.name)
+     self.node.static = static
+     self.node.type = ty
+    except SymbolError, e:
+      e.setToken(self.node.token)
+      e.report()
 
-  def define(self, idType, shadow=False):
+  def define(self, idType, shadow=False, static=""):
     if not shadow:
       try:
         env.getVarType(self.node.name)
@@ -491,7 +509,7 @@ class Identifier(NodeChecker):
         return
 
     try:
-      env.defineVar(self.node.name, idType.name)
+      env.defineVar(self.node.name, idType.name, static)
     except SymbolError, e:
       e.setToken(self.token)
       e.report()

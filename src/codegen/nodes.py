@@ -1,6 +1,7 @@
 import tree
 from node_code_gen import NodeCodeGen
 from type_checking.environment import env
+from error import SymbolError
 
 
 string_constants = 0
@@ -23,14 +24,23 @@ def get_next_temp(varinfo):
   return temp
 
 def add_string_constant(varinfo, string):
-  global string_constants
   if 'strings' not in varinfo:
     varinfo['strings'] = {}
-  constant_name = "@.str%d" % string_constants
-  varinfo['strings'][constant_name] = string
-  string_constants += 1
-  return constant_name
 
+  if string not in varinfo['strings']:
+    global string_constants
+    constant_name = "@.str%d" % string_constants
+    varinfo['strings'][string] = constant_name
+    string_constants += 1
+
+  return varinfo['strings'][string]
+
+def string_const_code(varinfo):
+  code = ""
+  if 'strings' in varinfo and len(varinfo['strings']):
+    for string, const in varinfo['strings'].iteritems():
+      code += '\n%s = constant [%d x i8] c"%s\\00"' % (const, len(string)+1, string)
+  return code
 
 def methodtypestrs(cls, args):
   # Add "this" argument
@@ -44,19 +54,19 @@ def methodtypestrs(cls, args):
   return ret, argstrs
 
 
-def methodcallstring(cls, temp, args, argtemps):
-  ret, argstrs = methodtypestrs(cls, args)
-  argstrs = map(lambda ty, n: "%s %s" % (ty, n), argstrs, argtemps)
-  return "%s %s(%s)" % (ret, temp, ", ".join(argstrs))
+def methodcallstring(cls, name, argtypes, args):
+  ret, argstrs = methodtypestrs(cls, argtypes)
+  argstrs = map(lambda ty, n: "%s %s" % (ty, n), argstrs, args)
+  return "%s %s(%s)" % (ret, name, ", ".join(argstrs))
 
 
-def methoddefstring(cls, name, args):
-  arg_names = ['%this'] + map(lambda i: "%%arg%d" % i, range(len(args)-1))
-  return methodcallstring(cls, "@%s.%s" % (cls, name), args, arg_names) 
+def methoddefstring(cls, name, argtypes):
+  arg_names = ['%this'] + map(lambda i: "%%arg%d" % i, range(len(argtypes)-1))
+  return methodcallstring(cls, "@%s.%s" % (cls, name), argtypes, arg_names) 
 
 
-def methodtypestring(cls, args):
-  ret, argstrs = methodtypestrs(cls, args)
+def methodtypestring(cls, argtypes):
+  ret, argstrs = methodtypestrs(cls, argtypes)
   return "%s (%s)*" % (ret, ", ".join(argstrs))
 
 
@@ -65,7 +75,6 @@ def methodtypestring(cls, args):
 
 class Document(NodeCodeGen):
   def generate(self):
-    print env.M
     for child in self.node.children:
       child.codegen.generate()
 
@@ -88,7 +97,6 @@ class Class(NodeCodeGen):
 %%class_%(name)s = type {
   %%class_%(superclass)s*,
   i8*,
-  %(constructor_type)s,
   %(method_types)s
 }
 
@@ -98,7 +106,6 @@ class Class(NodeCodeGen):
 @%(name)s = global %%class_%(name)s {
   %%class_%(superclass)s* @%(superclass)s,
   i8* @.str.%(name)s,
-  %(constructor_type)s @%(name)s._constructor,
   %(methods)s
 }
 
@@ -106,14 +113,6 @@ class Class(NodeCodeGen):
   %%class_%(name)s* @%(name)s%(field_types)s
 }
 """
-
-    constructor_args = []
-    for formal in self.node.formals.children:
-      constructor_args.append(formal.type)
-
-    constructor_args.append(cls)
-    constructor_type = methodtypestring(cls, constructor_args)
-      
     
     m = env.getClassMethods(cls)
 
@@ -150,7 +149,6 @@ class Class(NodeCodeGen):
       'name': cls, 
       'len': len(cls)+1,
       'superclass' : self.node.superclass.name,
-      'constructor_type': constructor_type,
       'method_types': ",\n  ".join(method_types),
       'methods': ",\n  ".join(method_consts),
       'field_types' : "".join(fields)
@@ -160,6 +158,7 @@ class Class(NodeCodeGen):
       code += alias
 
     # Constructor...
+
 
     constructor = {
       'body': "",
@@ -192,18 +191,15 @@ initialize:
   ret %%obj_%(class)s* %%ret
 }
 """
-    constructor['def'] = methoddefstring(cls, '_constructor', constructor_args)
+    args = env.getMethodType(cls, "_constructor")
+    constructor['def'] = methoddefstring(cls, '_constructor', args)
 
-    var_map = {}
-    # keeps track of information on variables used in this method
     varinfo = {
-      'map': var_map, 
       'used': 0,
       'class': cls
     }
     for arg, formal in enumerate(self.node.formals.children):
       argname = "%%arg%d" % arg
-      var_map[formal.id.static] = argname
       constructor['body'] += STORE_FIELD % {
         'temp': get_next_temp(varinfo), 
         'class': cls, 
@@ -230,16 +226,41 @@ initialize:
           'type': feature.type.name,
           'addr': result
         }
-        var_map[feature.id.static] = temp
 
-
-    if 'strings' in varinfo and len(varinfo['strings']):
-      for const, string in varinfo['strings'].iteritems():
-        code += '\n%s = constant [%d x i8] c"%s\\00"' % (const, len(string)+1, string)
+    code += string_const_code(varinfo)
     code += constr_form % constructor
 
-    #self.output(code)
+    for method in defs:
+      code += method.codegen.generate(cls)
 
+    self.output(code)
+
+class Def(NodeCodeGen):
+  def generate(self, cls):
+    # keeps track of information on variables used in this method
+    
+    name = self.node.id.name
+    rtype = self.node.type.name
+    args = env.getMethodType(cls, name)
+
+    varinfo = {
+      'used': 0,
+      'class': cls
+    }
+
+    body = "\n\ndefine %s {" % methoddefstring(cls, name, args)
+
+    body += self.node.value.codegen.generate(varinfo)
+
+    body += "\n  ret %%obj_%s* %s" % (rtype, varinfo['result'])
+    body += "\n}"
+    
+    code = string_const_code(varinfo)
+    code += body
+
+    return code
+
+    
 
 class Block(NodeCodeGen):
   def generate(self, varinfo):
@@ -256,18 +277,19 @@ class Block(NodeCodeGen):
 
 class Call(NodeCodeGen):
   def generate(self, varinfo):
-    code = "\n  ; Call"
     super_call = False
+    code = ""
     if isinstance(self.node.method, tree.Dot):
       code += self.node.method.parent.codegen.generate(varinfo)
       obj = varinfo['result']
-      cls = self.node.method.parent.getType().name
+      cls = self.node.method.parent.type
+      print cls
       name = self.node.method.child.name
-    if isinstance(self.node, tree.Super):
+    elif isinstance(self.node, tree.Super):
       code += "\n  ; Super call!"
       obj = get_next_temp(varinfo)
       cls = varinfo['class']
-      supercls = env.getSuperClass(varinfo['class'])
+      supercls = env.getSuperClass(cls)
       super_call = True
       name = self.node.method.name
       code += "\n  %s = typecast %%obj_%s* to %%obj_%s*" % (obj, cls, supercls)
@@ -276,9 +298,11 @@ class Call(NodeCodeGen):
       cls = varinfo['class']
       name = self.node.method.name
 
+    code = "\n\n  ; Calling %s.%s" % (supercls if super_call else cls, name)
+
 
     m = env.getMethod(cls, name)
-    loc = 3 + m[1]
+    loc = m[1] + 2
     
     args = [obj]
     for actual in self.node.actuals.children:
@@ -310,7 +334,7 @@ class Call(NodeCodeGen):
     temp5 = get_next_temp(varinfo)
     code += "\n  %s = call %s" % (temp5, methodcallstring(cls, temp4, m[0], args))
 
-    code += "\n  ; End call"
+    code += "\n"
     return code
 
 class Super(Call):
@@ -320,6 +344,7 @@ class Super(Call):
 class Boolean(NodeCodeGen):
   def generate(self, varinfo):
     varinfo['result'] = get_next_temp(varinfo)
+    varinfo['result_type'] = "Boolean"
     code = ("\n  %s = call %%obj_Boolean* @Boolean._constructor(%%obj_Boolean* null, i1 %d)" 
       % (varinfo['result'], int(self.node.value)))
     return code
@@ -327,6 +352,7 @@ class Boolean(NodeCodeGen):
 class Integer(NodeCodeGen):
   def generate(self, varinfo):
     varinfo['result'] = get_next_temp(varinfo)
+    varinfo['result_type'] = "Int"
     code = ("\n  %s = call %%obj_Int* @Int._constructor(%%obj_Int* null, i32 %d)" 
       % (varinfo['result'], self.node.value))
     return code
@@ -341,19 +367,79 @@ class String(NodeCodeGen):
     temp2 = get_next_temp(varinfo)
     code += "\n  %s = typecast %s %s to i8*" % (temp2, const_type, temp)
     varinfo['result'] = get_next_temp(varinfo)
+    varinfo['result_type'] = "String"
     code += ("\n  %s = call %%obj_String* @String._constructor(%%obj_Int* null, i8* %s)" 
       % (varinfo['result'], temp2))
     return code
 
 class Unit(NodeCodeGen):
   def generate(self, varinfo):
+    varinfo['result_type'] = "Unit"
     varinfo['result'] = '@the_Unit'
     return ""
 
 class This(NodeCodeGen):
   def generate(self, varinfo):
+    varinfo['result_type'] = varinfo['cls']
     varinfo['result'] = "%this"
     return ""
+
+
+class IfExpr(NodeCodeGen):
+  def generate(self, varinfo):
+    code = ""
+    code += self.node.cond.codegen.generate(varinfo)
+    cond = varinfo['result']
+    bv = get_next_temp(varinfo)
+    
+    code += "\n  %s = call i1 @.get_bool_val(%%obj_Boolean* %s)" % (bv, cond)
+
+    ty = "%%obj_%s*" % self.node.type
+    ralloc = get_next_temp(varinfo)
+    code += "\n  %s = alloca %%obj_%s*" % (ralloc, ty)
+
+    labeltrue = get_next_temp(varinfo)
+    labelfalse = get_next_temp(varinfo)
+    labelfi = get_next_temp(varinfo)
+
+    code += "\n  br i1 %s, label %s, label %s" % (bv, labeltrue, labelfalse)
+    code += "\n; <label>:%s" % labeltrue
+
+    code += self.node.true.codegen.generate(varinfo)
+
+    code += "\n  store %s %s, %s* %s" % (ty, varinfo['result'], ty, ralloc)
+    code += "\n  br label %s" % labelfi
+    code += "\n; <label>:%s" % labelfalse
+    
+    code += self.node.false.codegen.generate(varinfo)
+
+    code += "\n  store %s %s, %s* %s" % (ty, varinfo['result'], ty, ralloc)
+    code += "\n  br label %s" % labelfi
+    code += "\n; <label>:%s" % labelfi
+
+    res = get_next_temp(varinfo)
+    code += "\n  %s = load %s %s" % (res, ty, ralloc)
+
+    varinfo['result'] = res
+    varinfo['result_type'] = self.node.type
+
+    return code
+
+class EqExpr(NodeCodeGen):
+  def generate(self, varinfo):
+    code = "\n  ; eqexpr"
+    code += self.node.left.codegen.generate(varinfo)
+    left = varinfo['result']
+
+    code += self.node.right.codegen.generate(varinfo)
+    right = varinfo['result']
+
+    # Get the dynamic equals method from the left arg
+
+    
+    varinfo['result'] = get_next_temp(varinfo)
+    varinfo['result_type'] = "Boolean"
+    return code
 
 class ArithExpr(NodeCodeGen):
   def generate(self, method, varinfo):
@@ -366,6 +452,7 @@ class ArithExpr(NodeCodeGen):
     arg2 = varinfo['result']
 
     varinfo['result'] = get_next_temp(varinfo)
+    varinfo['result_type'] = "Int"
     code += ("\n  %s = call %%obj_Int* @Int._%s(%%obj_Int* %s, %%obj_Int* %s)" % 
       (varinfo['result'], method, arg1, arg2))
     return code
@@ -386,6 +473,13 @@ class DivExpr(ArithExpr):
   def generate(self, varinfo):
     return super(DivExpr, self).generate('div', varinfo)
 
+class LTExpr(ArithExpr): 
+  def generate(self, varinfo):
+    return super(DivExpr, self).generate('lt', varinfo)
+
+class LEExpr(ArithExpr): 
+  def generate(self, varinfo):
+    return super(DivExpr, self).generate('le', varinfo)
 
 class VarInit(NodeCodeGen):
   def generate(self, varinfo):
@@ -396,11 +490,16 @@ class VarInit(NodeCodeGen):
     code += "\n  store %%obj_%s* %s, %%obj_%s** %s" % (ty, varinfo['result'], ty, var)
 
     varinfo['result'] = None
+    varinfo['result_type'] = None
     return code
 
 
 class Identifier(NodeCodeGen):
   def generate(self, varinfo):
+    try:
+      varinfo['result_type'] = self.node.type
+    except:
+      raise SymbolError("ahhh", self.node.token)
     if isinstance(self.node.static, int):
       temp = get_next_temp(varinfo)
       varinfo['result'] = get_next_temp(varinfo)
@@ -420,12 +519,30 @@ class AssignExpr(NodeCodeGen):
     var = self.node.left.static
     ty = self.node.left.type
     code = self.node.right.codegen.generate(varinfo)
+    
     code += "\n  store %%obj_%s* %s, %%obj_%s** %s" % (ty, varinfo['result'], ty, var)
 
     varinfo['result'] = '@the_Unit'
+    varinfo['result_type'] = "Unit"
     return code
 
 class Constructor(NodeCodeGen):
   def generate(self, varinfo):
-    return ""
+    code = ""
+    args = ['null']
+
+    for actual in self.node.actuals.children:
+      code += actual.codegen.generate(varinfo)
+      args.append(varinfo['result'])
+
+    cls = self.node.type.name
+    name = "@%s.%s" % (cls, "_constructor")
+
+    argtypes = env.getMethodType(cls, "_constructor")
+    varinfo['result'] = get_next_temp(varinfo)
+    varinfo['result_type'] = cls
+
+    code += "\n  %s = call %s" % (varinfo['result'], methodcallstring(cls, name, argtypes, args))
+
+    return code
     
