@@ -67,8 +67,8 @@ def methodcallstring(cls, name, argtypes, args):
   return "%s %s(%s)" % (ret, name, ", ".join(argstrs))
 
 
-def methoddefstring(cls, name, argtypes):
-  arg_names = ['%this'] + map(lambda i: "%%arg%d" % i, range(len(argtypes)-1))
+def methoddefstring(cls, name, argtypes, this="%this"):
+  arg_names = [this] + map(lambda i: "%%arg%d" % i, range(len(argtypes)-1))
   return methodcallstring(cls, "@%s.%s" % (cls, name), argtypes, arg_names) 
 
 
@@ -176,8 +176,8 @@ class Class(NodeCodeGen):
     constr_form = """
 define %(def)s {
   %%objstk = alloca %%obj_%(class)s*
-  store %%obj_%(class)s* %%this, %%obj_%(class)s** %%objstk
-  %%isnull = icmp eq %%obj_%(class)s* %%this, null
+  store %%obj_%(class)s* %%child, %%obj_%(class)s** %%objstk
+  %%isnull = icmp eq %%obj_%(class)s* %%child, null
   br i1 %%isnull, label %%allocate, label %%initialize
 allocate: 
   %%space = call i8* @malloc(i32 %(malloc_bytes)d)
@@ -187,19 +187,19 @@ allocate:
   store %%class_%(class)s* @%(class)s, %%class_%(class)s** %%cls_field
   br label %%initialize
 initialize:
-  %%ret = load %%obj_%(class)s** %%objstk
+  %%this = load %%obj_%(class)s** %%objstk
   ; Recursively call our superclass' constructor
-  %%as_super = bitcast %%obj_%(class)s* %%ret to %%obj_%(superclass)s*
+  %%as_super = bitcast %%obj_%(class)s* %%this to %%obj_%(superclass)s*
   call %%obj_%(superclass)s* @%(superclass)s._constructor(%%obj_%(superclass)s* %%as_super)
 
   ;;;; %(class)s class initialization ;;;;
   %(body)s
 
-  ret %%obj_%(class)s* %%ret
+  ret %%obj_%(class)s* %%this
 }
 """
     args = env.getMethodType(cls, "_constructor")
-    constructor['def'] = methoddefstring(cls, '_constructor', args)
+    constructor['def'] = methoddefstring(cls, '_constructor', args, '%child')
 
     varinfo = {
       'used': 0,
@@ -291,7 +291,6 @@ class Call(NodeCodeGen):
       code += self.node.method.parent.codegen.generate(varinfo)
       obj = varinfo['result']
       cls = self.node.method.parent.type
-      print cls
       name = self.node.method.child.name
     elif isinstance(self.node, tree.Super):
       code += "\n  ; Super call!"
@@ -435,21 +434,6 @@ class IfExpr(NodeCodeGen):
 
     return code
 
-class EqExpr(NodeCodeGen):
-  def generate(self, varinfo):
-    code = "\n  ; eqexpr"
-    code += self.node.left.codegen.generate(varinfo)
-    left = varinfo['result']
-
-    code += self.node.right.codegen.generate(varinfo)
-    right = varinfo['result']
-
-    # Get the dynamic equals method from the left arg
-
-    
-    varinfo['result'] = get_next_temp(varinfo)
-    varinfo['result_type'] = "Boolean"
-    return code
 
 class ArithExpr(NodeCodeGen):
   def generate(self, method, varinfo):

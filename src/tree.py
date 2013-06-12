@@ -184,9 +184,6 @@ class LTExpr(IntCompExpr):
 class LEExpr(IntCompExpr):
   TYPE = "le"
 
-class EqExpr(CompExpr):
-  TYPE = "equals"
-
 class ArithExpr(BinaryExpr):
   pass
 

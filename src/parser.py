@@ -352,7 +352,14 @@ def p_comparison_equiv(p):
 
 def p_equiv(p):
 	"equiv : equiv EQUALS sum"
-	p[0] = EqExpr(p[1], p[3], token=ParseToken(p, 2))
+	p[0] = Call(
+    Dot(
+      p[1], 
+      Identifier("equals", token=ParseToken(p, 2)), 
+      token=ParseToken(p, 1)
+    ), 
+    Actuals([p[3]], token=ParseToken(p, 3)), 
+    token=ParseToken(p, 2))
 
 def p_equiv_sum(p):
 	"equiv : sum"

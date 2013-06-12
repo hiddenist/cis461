@@ -303,6 +303,7 @@ class Call(NodeChecker):
       return
     c, m, args = m
     ret, args = args[-1], args[:-1]
+    self.node.type = ret
 
     if ret is None:
       return
