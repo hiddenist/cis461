@@ -296,9 +296,6 @@ class Formal(Node):
     self.type = type
     super(Formal, self).__init__([id, type], token=token)
 
-class Actual(Node):
-  TYPE = "actual"
-
 class Type(Symbol):
   TYPE = "type"
   def __str__(self):

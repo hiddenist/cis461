@@ -298,6 +298,7 @@ class Call(NodeChecker):
         % (m, c, len(args), len(self.node.actuals.children)), self.token).report()
     else:
       for i, actual in enumerate(self.node.actuals.children):
+        actual.check()
         actual_type = actual.getType()
         if actual_type.name == "g":
           raise TypeCheckError("hmmm", actual.token)
@@ -355,7 +356,6 @@ class VarInit(NodeChecker):
     return self.node.type.getType()
   
   def check(self, define=True):
-    self.node.id.check()
     self.node.type.check()
     self.node.value.check()
 
@@ -368,6 +368,8 @@ class VarInit(NodeChecker):
 
     if define:
       self.define()
+
+    self.node.id.check()
 
   def define(self):
     self.node.id.checker.define(self.getType())

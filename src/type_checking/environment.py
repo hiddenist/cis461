@@ -45,31 +45,38 @@ class Environment(object):
 
       self.M.update({ 
         'Any': { 
-          'toString'     : (('String',), 0),
-          'equals'       : (('Any', 'Boolean',), 1),
+          '_constructor' : ((), 0),
+          'toString'     : (('String',), 1),
+          'equals'       : (('Any', 'Boolean',), 2),
          },
         'IO': {
-          'abort'         : (('String', 'Nothing',), 0),
-          'out'           : (('String', 'IO',), 1),
-          'is_null'       : (('Any', 'Boolean',), 2),
-          'out_any'       : (('Any', 'IO',), 3),
-          'in'            : (('String',), 4),
-          'symbol'        : (('String','Symbol',), 5),
-          'symbol_name'   : (('Symbol','String',), 6),
+          '_constructor' : ((), 0),
+          'abort'        : (('String', 'Nothing',), 1),
+          'out'          : (('String', 'IO',), 2),
+          'is_null'      : (('Any', 'Boolean',), 3),
+          'out_any'      : (('Any', 'IO',), 4),
+          'in'           : (('String',), 5),
+          'symbol'       : (('String','Symbol',), 6),
+          'symbol_name'  : (('Symbol','String',), 7),
         },
         'String': {
-          'length'    : (('Int',), 0),
-          'charAt'    : (('Int', 'Int',), 1),
-          'concat'    : (('String', 'String', 'String',), 2),
-          'substring' : (('Int', 'Int', 'String',), 3),
-          'indexOf'   : (('String', 'Int',), 4),
+          '_constructor' : ((), 0),
+          'length'       : (('Int',), 1),
+          'charAt'       : (('Int', 'Int',), 2),
+          'concat'       : (('String', 'String', 'String',), 3),
+          'substring'    : (('Int', 'Int', 'String',), 4),
+          'indexOf'      : (('String', 'Int',), 5),
         },
-        'Symbol': { 'hashCode'  : (('Int',), 0) },
+        'Symbol': { 
+          '_constructor' : ((), 0),
+          'hashCode'     : (('Int',), 1) 
+        },
         'ArrayAny': {
-          'length'  : (('Int',), 0),
-          'resize'  : (('Int','ArrayAny',), 1),
-          'get'     : (('Int', 'Any',), 2),
-          'set'     : (('Int', 'Any', 'Any',), 3),
+          '_constructor' : (('Int',), 0),
+          'length'       : (('Int',), 1),
+          'resize'       : (('Int','ArrayAny',), 2),
+          'get'          : (('Int', 'Any',), 3),
+          'set'          : (('Int', 'Any', 'Any',), 4),
         }
       })
 
@@ -129,7 +136,7 @@ class Environment(object):
       raise SymbolError("The variable '%s' was already defined in this scope." % v)
     else:
       self.vars_defined += 1
-      if not static: static = "local%d" % self.vars_defined
+      if not static: static = "%%loc%d" % self.vars_defined
       d[v] = (T, static)
 
   def defineMethod(self, C, f, t):
