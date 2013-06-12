@@ -59,9 +59,9 @@ if __name__ == "__main__":
 		if Error.errors:
 			errorExit()
 
+		if verbose: print "--- Beginning code generation ---"
 		CodeGen(tree).generate()
 
-		if verbose: print "--- Beginning code generation ---"
 	except TooManyErrors:
 		errorExit()
 	except Error, e:

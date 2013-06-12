@@ -339,6 +339,8 @@ class String(NodeChecker):
 class Formal(NodeChecker):
   def getType(self):
     return self.node.type.getType()
+  def check(self):
+    self.node.id.check()
 
 class Constructor(NodeChecker):
   def check(self):
@@ -353,6 +355,7 @@ class VarInit(NodeChecker):
     return self.node.type.getType()
   
   def check(self, define=True):
+    self.node.id.check()
     self.node.type.check()
     self.node.value.check()
 
@@ -454,8 +457,8 @@ class Identifier(NodeChecker):
         e.report()
 
   def check(self):
-    self.node.static = env.getVarStatic(self.name)
-    self.getType()
+    self.node.static = env.getVarStatic(self.node.name)
+    self.node.type = self.getType()
 
   def define(self, idType, shadow=False):
     if not shadow:

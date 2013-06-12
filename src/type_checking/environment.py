@@ -7,6 +7,9 @@ class Environment(object):
     # Since class names have to be uppercase, it's impossible for a user to make a class with this name.
     self.undefined = set(["undefined"])
 
+    # Keep track of the number of variables defined
+    self.vars_defined = 0
+
     # Variables and their type, for each scope
     self.O = []
 
@@ -38,8 +41,9 @@ class Environment(object):
       
       for c in self.C:
         self.Oc[c] = {}
+        self.M[c] = {}
 
-      self.M = { 
+      self.M.update({ 
         'Any': { 
           'toString'     : (('String',), 0),
           'equals'       : (('Any', 'Boolean',), 1),
@@ -67,7 +71,7 @@ class Environment(object):
           'get'     : (('Int', 'Any',), 2),
           'set'     : (('Int', 'Any', 'Any',), 3),
         }
-      }
+      })
 
       self.Oc['Int']['value'] = ('Int', 0)
       self.Oc['Boolean']['value'] = ('Boolean', 0)
@@ -124,7 +128,8 @@ class Environment(object):
     if v in d:
       raise SymbolError("The variable '%s' was already defined in this scope." % v)
     else:
-      if not static: static = "%%s%d.%s" % (len(d), v)
+      self.vars_defined += 1
+      if not static: static = "local%d" % self.vars_defined
       d[v] = (T, static)
 
   def defineMethod(self, C, f, t):
@@ -166,6 +171,12 @@ class Environment(object):
         s = self.getSuperClass(s)
 
     raise SymbolError("Class '%s' does not have a method '%s' defined" % (C, f))
+
+  def getClassMethods(self, C):
+    return self.M[C]
+
+  def getClassVars(self, C):
+    return self.Oc[C]
 
   def getMethodType(self, C, f):
     if C == "M": raise Exception("here")
@@ -221,45 +232,53 @@ class Environment(object):
       spr = self.getSuperClass(cls)
 
       if spr is None:
-        attrs, methods = {}, {}
+        methods, attrs = {}, {}
       else:
-        attrs, methods = combine(spr)
+        methods, attrs = combine(spr)
 
       # Overriding methods might be defined both in the superclass and subclass,
       # so keep track of duplicates and fix the numbering afterwards since we 
       # don't have time to restructure old code.
 
-      holes = set()
+      holes = []
       minc = len(methods)
-      for m in self.M[cls]:
-        num = m[1]+minc
+      for key,val in self.M[cls].iteritems():
+        num = val[1]+minc
 
-        if m in methods:
-          del self.M[cls][m]
-          holes.add(num)
+        # If this method already exists in the parent, assume its an override
+        # and use the parents' position
+        if key in methods:
+          holes.append(num)
+          num = methods[key][1]
 
-        else:
-          self.M[cls][m] = (m[0], num)
+        self.M[cls][key] = (val[0], num, cls)
 
       holes.sort()
       for hole in reversed(holes):
-        for m in self.M[cls]:
-          if m[1] > hole:
-            self.M[cls][m] = (m[0], m[1]-1)
+        for key, val in self.M[cls].iteritems():
+          if val[1] > hole:
+            self.M[cls][key] = (val[0], val[1]-1)
 
-      self.M[cls].update(methods)
+      # Finally, add all of the methods from the superclass that aren't yet
+      # defined for the subclass
+      for k,v in methods.iteritems():
+        if k not in self.M[cls]:
+          self.M[cls][k] = v
         
 
       ainc = len(attrs)
-      for v in self.Oc[cls]:
-        if v in attrs:
+      for key,val in self.Oc[cls].iteritems():
+        if key in attrs:
           SymbolError("Attribute %s of class '%s' already defined in superclass" 
-            % (v[0], cls)).report()
-        self.Oc[cls][v] = (v[0], v[1]+ainc)
+            % (key, cls)).report()
+        self.Oc[cls][key] = (val[0], val[1]+ainc)
 
       self.Oc[cls].update(attrs)
 
       return self.M[cls], self.Oc[cls]
+
+    for key in self.C:
+      combine(key)
       
       
     
