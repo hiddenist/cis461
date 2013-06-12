@@ -52,7 +52,7 @@ initialize:
 @.Any_str_format = constant [11 x i8] c"<%s at %d>\00" 
 define %obj_String* @Any.toString(%obj_Any* %this) {
 	%format = getelementptr [11 x i8]* @.Any_str_format, i32 0, i32 0
-	%buffer = alloca i8, i32 200 ; hopefully this is reasonable
+	%buffer = alloca i8, i32 200 ; hopefully this is a reasonable buffer size
 
   %clsp = getelementptr %obj_Any* %this, i32 0, i32 0
   %cls = load %class_Any** %clsp
@@ -77,8 +77,8 @@ define %obj_Boolean* @Any.equals(%obj_Any* %this, %obj_Any* %that) {
   %class_Any*,
   i8*,
   %obj_Boolean* (%obj_Boolean*, i1)*,       ; _constructor
-  %obj_String*  (%obj_Boolean*)*            ; toString
-  ;%obj_Boolean* (%obj_Boolean*, %obj_Any*)* ; equals
+  %obj_String*  (%obj_Boolean*)*,           ; toString
+  %obj_Boolean* (%obj_Boolean*, %obj_Any*)* ; equals
 }
 %obj_Boolean = type { 
   %class_Boolean*,
@@ -92,8 +92,8 @@ define %obj_Boolean* @Any.equals(%obj_Any* %this, %obj_Any* %that) {
   %class_Any*                               @Any,
   i8*                                       @.str.Boolean,
   %obj_Boolean* (%obj_Boolean*, i1)*        @Boolean._constructor,
-  %obj_String*  (%obj_Boolean*)*            @Boolean.toString
-  ;%obj_Boolean* (%obj_Boolean*, %obj_Any*)* @Boolean.equals
+  %obj_String*  (%obj_Boolean*)*,           @Boolean.toString
+  %obj_Boolean* (%obj_Boolean*, %obj_Any*)* @Boolean.equals
 }
 
 define i1 @.get_bool_val(%obj_Boolean* %bool) {
@@ -155,6 +155,31 @@ fi:
   %str_rep = load i8** %str
   %obj = call %obj_String* @String._constructor(%obj_String* null, i8* %str_rep)
   ret %obj_String* %obj
+}
+
+define %obj_Boolean* @Boolean.equals(%obj_Boolean* %this, %obj_Any* %that) {
+  %typep = getelementptr %obj_Any* %that, i32 0, i32 0
+  %type = load %class_Any** %typep
+  %bcls = bitcast %class_Boolean* @Boolean to %class_Any*
+  %ib = icmp eq %class_Any* %type, %bcls
+  %res = alloca i1
+  store i1 %ib, i1* %res
+  br i1 %ib, label %isbool, label %return
+
+isbool:
+  %that_bool = bitcast %obj_Any* %that to %obj_Boolean*
+  %thisv = call i1 @.get_bool_val(%obj_Boolean* %this)
+  %thatv = call i1 @.get_bool_val(%obj_Boolean* %that_bool)
+
+  %eq = icmp eq i1 %thisv, %thatv
+  store i1 %eq, i1* %res
+
+  br label %return
+return:
+
+  %val = load i1* %res
+  %bool = call %obj_Boolean* @Boolean._constructor(%obj_Boolean* null, i1 %val)
+  ret %obj_Boolean* %bool
 }
 
 
@@ -413,12 +438,13 @@ define %obj_IO* @IO.out(%obj_IO* %this, %obj_String* %str) {
 }
 
 define i32 @llvm_main() {
-  ;%1 = call %obj_Any* @Any._constructor(%obj_Any* null)
-  ;%2 = call %obj_Any* @Any._constructor(%obj_Any* null)
-  ;%obj = call %obj_Boolean* @Any.equals(%obj_Any* %1, %obj_Any* %1)
+  %1 = call %obj_Boolean* @Boolean._constructor(%obj_Boolean* null, i1 0)
+  %2 = call %obj_Int* @Int._constructor(%obj_Int* null, i32 0)
+  %3 = bitcast %obj_Int* %2 to %obj_Any*
+  %obj = call %obj_Boolean* @Boolean.equals(%obj_Boolean* %1, %obj_Any* %3)
 
-  ;%as_any = bitcast %obj_Boolean* %obj to %obj_Any*
-  %as_any = call %obj_Any* @Any._constructor(%obj_Any* null)
+  %as_any = bitcast %obj_Boolean* %obj to %obj_Any*
+  ;%as_any = call %obj_Any* @Any._constructor(%obj_Any* null)
   
   ; Call the "toString" method
   %cls_loc = getelementptr %obj_Any* %as_any, i32 0, i32 0
