@@ -19,7 +19,7 @@ LOAD_FIELD = (
 )
 
 def bitcast_if_necessary(varinfo, expected, got, loc):
-  if str(expected) == str(got):
+  if str(expected) == str(got) or str(got) == "null":
     return ""
 
   temp = get_next_temp(varinfo)
@@ -402,6 +402,12 @@ class Unit(NodeCodeGen):
     varinfo['result'] = '@the_Unit'
     return ""
 
+class Null(NodeCodeGen):
+  def generate(self, varinfo):
+    varinfo['result_type'] = "null"
+    varinfo['result'] = "null"
+    return ""
+
 class This(NodeCodeGen):
   def generate(self, varinfo):
     varinfo['result_type'] = varinfo['cls']
@@ -595,6 +601,7 @@ class AssignExpr(NodeCodeGen):
     varinfo['result'] = '@the_Unit'
     varinfo['result_type'] = "Unit"
     return code
+
 
 class Constructor(NodeCodeGen):
   def generate(self, varinfo):
