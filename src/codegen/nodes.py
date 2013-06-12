@@ -18,6 +18,13 @@ LOAD_FIELD = (
   "\n  %(temp2)s = load %%obj_%(type)s** %(temp)s"
 )
 
+def bitcast_if_necessary(varinfo, expected, got, loc):
+  if expected == got:
+    return loc, ""
+  temp = get_next_temp(varinfo)
+  code = "\n  %s = bitcast %%obj_%s* %s to %%obj_%s*" % (temp, got, loc, expected)
+  return temp, code
+
 def get_next_temp(varinfo):
   temp = "%%%d" % varinfo['used']
   varinfo['used'] += 1
@@ -252,15 +259,16 @@ class Def(NodeCodeGen):
 
     body += self.node.value.codegen.generate(varinfo)
 
-    body += "\n  ret %%obj_%s* %s" % (rtype, varinfo['result'])
+    ret, c = bitcast_if_necessary(varinfo, rtype, varinfo['result_type'], varinfo['result'])
+    body += c
+
+    body += "\n  ret %%obj_%s* %s" % (rtype, ret)
     body += "\n}"
     
     code = string_const_code(varinfo)
     code += body
 
     return code
-
-    
 
 class Block(NodeCodeGen):
   def generate(self, varinfo):
@@ -305,9 +313,11 @@ class Call(NodeCodeGen):
     loc = m[1] + 2
     
     args = [obj]
-    for actual in self.node.actuals.children:
+    for actual,argtype in zip(self.node.actuals.children, m[0]):
       code += actual.codegen.generate(varinfo)
-      args.append(varinfo['result'])
+      ref, c = bitcast_if_necessary(varinfo, argtype, varinfo['result_type'], varinfo['result'])
+      code += c
+      args.append(ref)
 
     temp = get_next_temp(varinfo)
     code += "\n  %s = getelementptr %%obj_%s* %s, i32 0, i32 0" % (temp, cls, obj) 
@@ -481,19 +491,6 @@ class LEExpr(ArithExpr):
   def generate(self, varinfo):
     return super(DivExpr, self).generate('le', varinfo)
 
-class VarInit(NodeCodeGen):
-  def generate(self, varinfo):
-    ty = self.node.type.name
-    code = self.node.value.codegen.generate(varinfo)
-    var = self.node.id.static
-    code += "\n  %s = alloca %%obj_%s*" % (var, ty)
-    code += "\n  store %%obj_%s* %s, %%obj_%s** %s" % (ty, varinfo['result'], ty, var)
-
-    varinfo['result'] = None
-    varinfo['result_type'] = None
-    return code
-
-
 class Identifier(NodeCodeGen):
   def generate(self, varinfo):
     try:
@@ -514,13 +511,37 @@ class Identifier(NodeCodeGen):
       temp = varinfo['result'] = get_next_temp(varinfo)
       return "\n  %s = load %%obj_%s** %s" % (temp, self.node.type, self.node.static)
 
+def _assign_var(varinfo, ty, assign, static):
+    code = assign.codegen.generate(varinfo)
+    rty = varinfo['result_type']
+    store = varinfo['result']
+
+    if rty != ty:
+      temp = get_next_temp(varinfo)
+      code += "\n  %s = bitcast %%obj_%s* %s to %%obj_%s*" % (temp, rty, store, ty)
+      store = temp
+
+    code += "\n  store %%obj_%s* %s, %%obj_%s** %s" % (ty, store, ty, static)
+    return code
+  
+class VarInit(NodeCodeGen):
+  def generate(self, varinfo):
+    ty = self.node.type.name
+    var = self.node.id.static
+    code = "\n  %s = alloca %%obj_%s*" % (var, ty)
+
+    code += _assign_var(varinfo, ty, self.node.value, var)
+
+    varinfo['result'] = None
+    varinfo['result_type'] = None
+    return code
+
 class AssignExpr(NodeCodeGen):
   def generate(self, varinfo):
     var = self.node.left.static
     ty = self.node.left.type
-    code = self.node.right.codegen.generate(varinfo)
-    
-    code += "\n  store %%obj_%s* %s, %%obj_%s** %s" % (ty, varinfo['result'], ty, var)
+
+    code = _assign_var(varinfo, ty, self.node.right, var)
 
     varinfo['result'] = '@the_Unit'
     varinfo['result_type'] = "Unit"
@@ -528,17 +549,19 @@ class AssignExpr(NodeCodeGen):
 
 class Constructor(NodeCodeGen):
   def generate(self, varinfo):
-    code = ""
-    args = ['null']
-
-    for actual in self.node.actuals.children:
-      code += actual.codegen.generate(varinfo)
-      args.append(varinfo['result'])
-
     cls = self.node.type.name
-    name = "@%s.%s" % (cls, "_constructor")
+    code = "\n  ; Calling %s._constructor" %cls
 
+    name = "@%s.%s" % (cls, "_constructor")
     argtypes = env.getMethodType(cls, "_constructor")
+
+    args = ['null']
+    for actual,argtype in zip(self.node.actuals.children, argtypes):
+      code += actual.codegen.generate(varinfo)
+      ref, c = bitcast_if_necessary(varinfo, argtype, varinfo['result_type'], varinfo['result'])
+      code += c
+      args.append(ref)
+
     varinfo['result'] = get_next_temp(varinfo)
     varinfo['result_type'] = cls
 
