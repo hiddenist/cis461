@@ -153,6 +153,7 @@ class WhileExpr(NodeChecker):
     return Type("Unit")
 
   def check(self):
+    self.node.type = self.getType()
     self.node.cond.check()
     self.node.control.check()
 
@@ -303,7 +304,7 @@ class Call(NodeChecker):
       return
     c, m, args = m
     ret, args = args[-1], args[:-1]
-    self.node.type = ret
+    self.node.type = Type(ret)
 
     if ret is None:
       return
@@ -492,7 +493,7 @@ class Identifier(NodeChecker):
     try:
      ty, static = env.getVar(self.node.name)
      self.node.static = static
-     self.node.type = ty
+     self.node.type = Type(ty)
     except SymbolError, e:
       e.setToken(self.node.token)
       e.report()

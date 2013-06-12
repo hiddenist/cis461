@@ -19,11 +19,14 @@ LOAD_FIELD = (
 )
 
 def bitcast_if_necessary(varinfo, expected, got, loc):
-  if expected == got:
-    return loc, ""
+  if str(expected) == str(got):
+    return ""
+
   temp = get_next_temp(varinfo)
   code = "\n  %s = bitcast %%obj_%s* %s to %%obj_%s*" % (temp, got, loc, expected)
-  return temp, code
+  varinfo['result'] = temp
+  varinfo['result_type'] = expected
+  return code
 
 def get_next_temp(varinfo):
   temp = "%%%d" % varinfo['used']
@@ -34,6 +37,8 @@ def add_string_constant(varinfo, string):
   if 'strings' not in varinfo:
     varinfo['strings'] = {}
 
+  string = unicode(string, "utf-8")
+
   if string not in varinfo['strings']:
     global string_constants
     constant_name = "@.str%d" % string_constants
@@ -42,11 +47,23 @@ def add_string_constant(varinfo, string):
 
   return varinfo['strings'][string]
 
+def convert_special_chars(string):
+  newstr = ""
+  for char in string:
+    code = ord(char)
+    if code < ord(' ') or code > ord("~"):
+      newstr += "\\%02X" % code
+    else:
+      newstr += char
+
+  return newstr
+
 def string_const_code(varinfo):
   code = ""
   if 'strings' in varinfo and len(varinfo['strings']):
     for string, const in varinfo['strings'].iteritems():
-      code += '\n%s = constant [%d x i8] c"%s\\00"' % (const, len(string)+1, string)
+      utf_string = convert_special_chars(string)
+      code += '\n%s = constant [%d x i8] c"%s\\00"' % (const, len(string)+1, utf_string)
   return code
 
 def methodtypestrs(cls, args):
@@ -96,7 +113,7 @@ define void @llvm_main() {
 
 class Class(NodeCodeGen):
   def generate(self):
-    cls = self.node.type.name
+    cls = str(self.node.type)
 
     code = ""
 
@@ -211,7 +228,7 @@ initialize:
         'temp': get_next_temp(varinfo), 
         'class': cls, 
         'loc': formal.id.static + 1,
-        'type': formal.type.name,
+        'type': str(formal.type),
         'addr': argname
       }
 
@@ -230,7 +247,7 @@ initialize:
           'temp': temp, 
           'class': cls, 
           'loc': feature.id.static + 1,
-          'type': feature.type.name,
+          'type': str(feature.type),
           'addr': result
         }
 
@@ -247,7 +264,7 @@ class Def(NodeCodeGen):
     # keeps track of information on variables used in this method
     
     name = self.node.id.name
-    rtype = self.node.type.name
+    rtype = str(self.node.type)
     args = env.getMethodType(cls, name)
 
     varinfo = {
@@ -259,10 +276,9 @@ class Def(NodeCodeGen):
 
     body += self.node.value.codegen.generate(varinfo)
 
-    ret, c = bitcast_if_necessary(varinfo, rtype, varinfo['result_type'], varinfo['result'])
-    body += c
+    body += bitcast_if_necessary(varinfo, rtype, varinfo['result_type'], varinfo['result'])
 
-    body += "\n  ret %%obj_%s* %s" % (rtype, ret)
+    body += "\n  ret %%obj_%s* %s" % (rtype, varinfo['result'])
     body += "\n}"
     
     code = string_const_code(varinfo)
@@ -290,7 +306,7 @@ class Call(NodeCodeGen):
     if isinstance(self.node.method, tree.Dot):
       code += self.node.method.parent.codegen.generate(varinfo)
       obj = varinfo['result']
-      cls = self.node.method.parent.type
+      cls = str(self.node.method.parent.type)
       name = self.node.method.child.name
     elif isinstance(self.node, tree.Super):
       code += "\n  ; Super call!"
@@ -314,9 +330,8 @@ class Call(NodeCodeGen):
     args = [obj]
     for actual,argtype in zip(self.node.actuals.children, m[0]):
       code += actual.codegen.generate(varinfo)
-      ref, c = bitcast_if_necessary(varinfo, argtype, varinfo['result_type'], varinfo['result'])
-      code += c
-      args.append(ref)
+      code += bitcast_if_necessary(varinfo, argtype, varinfo['result_type'], varinfo['result'])
+      args.append(varinfo['result'])
 
     temp = get_next_temp(varinfo)
     code += "\n  %s = getelementptr %%obj_%s* %s, i32 0, i32 0" % (temp, cls, obj) 
@@ -403,7 +418,7 @@ class IfExpr(NodeCodeGen):
     
     code += "\n  %s = call i1 @.get_bool_val(%%obj_Boolean* %s)" % (bv, cond)
 
-    ty = "%%obj_%s*" % self.node.type
+    ty = "%%obj_%s*" % str(self.node.type)
     ralloc = get_next_temp(varinfo)
     code += "\n  %s = alloca %%obj_%s*" % (ralloc, ty)
 
@@ -430,7 +445,41 @@ class IfExpr(NodeCodeGen):
     code += "\n  %s = load %s %s" % (res, ty, ralloc)
 
     varinfo['result'] = res
-    varinfo['result_type'] = self.node.type
+    varinfo['result_type'] = str(self.node.type)
+
+    return code
+
+
+class WhileExpr(NodeCodeGen):
+  def generate(self, varinfo):
+    code = ""
+
+    ty = "%%obj_%s*" % str(self.node.type)
+    ralloc = get_next_temp(varinfo)
+    code += "\n  %s = alloca %%obj_%s*" % (ralloc, ty)
+
+    loopcheck = get_next_temp(varinfo)
+    loopbegin = get_next_temp(varinfo)
+    loopend = get_next_temp(varinfo)
+
+    code += "\n; <label>:%s" % loopcheck
+
+    code += self.node.cond.codegen.generate(varinfo)
+    cond = varinfo['result']
+    bv = get_next_temp(varinfo)
+    code += "\n  %s = call i1 @.get_bool_val(%%obj_Boolean* %s)" % (bv, cond)
+
+    code += "\n  br i1 %s, label %s, label %s" % (bv, loopbegin, loopend)
+
+    code += "\n; <label>:%s" % loopbegin
+
+    code += self.node.control.codegen.generate(varinfo)
+
+    code += "\n  br label %s" % loopcheck
+    code += "\n; <label>:%s" % loopend
+
+    varinfo['result'] = "@the_Unit"
+    varinfo['result_type'] = "Unit"
 
     return code
 
@@ -469,16 +518,37 @@ class DivExpr(ArithExpr):
 
 class LTExpr(ArithExpr): 
   def generate(self, varinfo):
-    return super(DivExpr, self).generate('lt', varinfo)
+    return super(LTExpr, self).generate('lt', varinfo)
 
 class LEExpr(ArithExpr): 
   def generate(self, varinfo):
-    return super(DivExpr, self).generate('le', varinfo)
+    return super(LEExpr, self).generate('le', varinfo)
+
+class UnaryExpr(NodeCodeGen):
+  def generate(self, method, varinfo):
+    code = ""
+
+    code += self.node.arg.codegen.generate(varinfo)
+    arg = varinfo['result']
+
+    varinfo['result'] = get_next_temp(varinfo)
+    varinfo['result_type'] = "Int"
+    code += ("\n  %s = call %%obj_Int* @Int._%s(%%obj_Int* %s)" % 
+      (varinfo['result'], method, arg1, arg2))
+    return code
+
+class NotExpr(UnaryExpr):
+  def generate(self, varinfo):
+    return super(NotExpr, self).generate('not', varinfo)
+
+class NegExpr(UnaryExpr):
+  def generate(self, varinfo):
+    return super(NegExpr, self).generate('neg', varinfo)
 
 class Identifier(NodeCodeGen):
   def generate(self, varinfo):
     try:
-      varinfo['result_type'] = self.node.type
+      varinfo['result_type'] = str(self.node.type)
     except:
       raise SymbolError("ahhh", self.node.token)
     if isinstance(self.node.static, int):
@@ -489,7 +559,7 @@ class Identifier(NodeCodeGen):
         'temp2' : varinfo['result'],
         'class' : varinfo['class'],
         'loc' : self.node.static + 1, # Easy to forget... but important.
-        'type' : self.node.type
+        'type' : str(self.node.type)
       }
     else:
       temp = varinfo['result'] = get_next_temp(varinfo)
@@ -497,20 +567,15 @@ class Identifier(NodeCodeGen):
 
 def _assign_var(varinfo, ty, assign, static):
     code = assign.codegen.generate(varinfo)
-    rty = varinfo['result_type']
-    store = varinfo['result']
 
-    if rty != ty:
-      temp = get_next_temp(varinfo)
-      code += "\n  %s = bitcast %%obj_%s* %s to %%obj_%s*" % (temp, rty, store, ty)
-      store = temp
+    code += bitcast_if_necessary(varinfo, ty, varinfo['result_type'], varinfo['result'])
 
-    code += "\n  store %%obj_%s* %s, %%obj_%s** %s" % (ty, store, ty, static)
+    code += "\n  store %%obj_%s* %s, %%obj_%s** %s" % (ty, varinfo['result'], ty, static)
     return code
   
 class VarInit(NodeCodeGen):
   def generate(self, varinfo):
-    ty = self.node.type.name
+    ty = str(self.node.type)
     var = self.node.id.static
     code = "\n  %s = alloca %%obj_%s*" % (var, ty)
 
@@ -533,7 +598,7 @@ class AssignExpr(NodeCodeGen):
 
 class Constructor(NodeCodeGen):
   def generate(self, varinfo):
-    cls = self.node.type.name
+    cls = str(self.node.type)
     code = "\n  ; Calling %s._constructor" %cls
 
     name = "@%s.%s" % (cls, "_constructor")
@@ -542,9 +607,8 @@ class Constructor(NodeCodeGen):
     args = ['null']
     for actual,argtype in zip(self.node.actuals.children, argtypes):
       code += actual.codegen.generate(varinfo)
-      ref, c = bitcast_if_necessary(varinfo, argtype, varinfo['result_type'], varinfo['result'])
-      code += c
-      args.append(ref)
+      code += bitcast_if_necessary(varinfo, argtype, varinfo['result_type'], varinfo['result'])
+      args.append(varinfo['result'])
 
     varinfo['result'] = get_next_temp(varinfo)
     varinfo['result_type'] = cls
