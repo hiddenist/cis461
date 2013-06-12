@@ -94,6 +94,7 @@ class MatchExpr(NodeChecker):
     return t
 
   def check(self):
+    self.node.type = self.getType()
     types = []
     nulls = 0
     for case in self.node.cases:
@@ -131,6 +132,7 @@ class Case(NodeChecker):
     if not isinstance(self.node.id, tree.Null):
       self.node.id.checker.define(self.node.type, shadow=True)
     self.node.block.check()
+    self.node.type = self.getType()
     env.exitScope()
 
 
@@ -171,6 +173,8 @@ class AssignExpr(NodeChecker):
     ltype = self.node.left.getType()
     rtype = self.node.right.getType()
 
+    self.node.type = self.getType
+
     if not getattr(ltype, 'suppress_errors', False) and (
         not getattr(rtype, 'suppress_errors', False) and not rtype.subsetOf(ltype)
       ):
@@ -185,6 +189,7 @@ class CompExpr(NodeChecker):
   def check(self):
     self.node.left.check()
     self.node.right.check()
+    self.node.type = self.getType()
 
 class IntCompExpr(CompExpr):
   def check(self):
@@ -192,6 +197,7 @@ class IntCompExpr(CompExpr):
     self.node.right.check()
     ltype = self.node.left.getType()
     rtype = self.node.right.getType()
+    self.node.type = self.getType()
 
     invalid = None
     if not ltype.isType("Int"):
@@ -216,6 +222,7 @@ class ArithExpr(NodeChecker):
     self.node.right.check()
     ltype = self.node.left.getType()
     rtype = self.node.right.getType()
+    self.node.type = self.getType()
 
     invalid = None
 
@@ -240,6 +247,7 @@ class NotExpr(NodeChecker):
 
   def check(self):
     self.node.arg.check()
+    self.node.type = self.getType()
     if not self.node.arg.getType().isType("Boolean"):
       TypeCheckError("'Not' operator may only be used with argument of type 'Boolean'", 
         self.token).report()
@@ -250,6 +258,7 @@ class NegExpr(NodeChecker):
     return Type("Int")
 
   def check(self):
+    self.node.type = self.getType()
     self.node.arg.check()
     if not self.node.arg.getType().isType("Int"):
       TypeCheckError("Negation operator may only be used with argument of type 'Int'", 
@@ -337,6 +346,7 @@ class This(NodeChecker):
     return Type(env.getVarType('this'))
 
   def check(self):
+    self.node.type = self.getType()
     self.getType()
 
 class Unit(NodeChecker):
