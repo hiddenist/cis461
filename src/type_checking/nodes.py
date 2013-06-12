@@ -32,8 +32,13 @@ class Class(NodeChecker):
 
     # Define each of the methods and parameters
 
+    constructor_args = []
     for formal in self.node.formals.children:
       formal.id.checker.attrDefine(self.node.type, formal.type)
+      constructor_args.append(formal.type.name)
+    constructor_args.append(self.node.type.name)
+    
+    env.defineMethod(self.node.type.name, "_constructor", constructor_args)
 
     for feature in self.node.body.children:
       if isinstance(feature, tree.Def):
@@ -46,6 +51,7 @@ class Class(NodeChecker):
       self.node.superclass.check()
 
     env.enterClassScope(self.node.type.name)
+    self.node.options.check()
 
     for formal in self.node.formals.children:
       formal.check()
@@ -300,8 +306,6 @@ class Call(NodeChecker):
       for i, actual in enumerate(self.node.actuals.children):
         actual.check()
         actual_type = actual.getType()
-        if actual_type.name == "g":
-          raise TypeCheckError("hmmm", actual.token)
         if not getattr(actual_type, 'suppress_errors', False) and not actual_type.subsetOf(args[i]):
           TypeCheckError("Provided argument does not match type in method definition;"
             + " '%s' is not compatible with '%s'" 
@@ -343,13 +347,25 @@ class Formal(NodeChecker):
   def check(self):
     self.node.id.check()
 
-class Constructor(NodeChecker):
-  def check(self):
-    if self.node.type.name in UNINSTANTIABLE_TYPES:
-      TypeCheckError("Objects of type '%s' are uninstantiable", self.token).report()
+class ConstructorCheck(Call):
+  def getMethod(self):
+    c = self.node.type.name
+    n = "_constructor"
+    m = env.getMethodType(c, n)
+    return c, n, m
 
   def getType(self):
     return self.node.type.getType()
+
+class ClassOpts(ConstructorCheck):
+  pass
+
+class Constructor(ConstructorCheck):
+  def check(self):
+    if self.node.type.name in UNINSTANTIABLE_TYPES:
+      TypeCheckError("Objects of type '%s' are uninstantiable", self.token).report()
+    return super(Constructor, self).check()
+
 
 class VarInit(NodeChecker):
   def getType(self):

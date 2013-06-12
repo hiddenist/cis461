@@ -45,12 +45,12 @@ class Environment(object):
 
       self.M.update({ 
         'Any': { 
-          '_constructor' : ((), 0),
+          '_constructor' : (('Any',), 0),
           'toString'     : (('String',), 1),
           'equals'       : (('Any', 'Boolean',), 2),
          },
         'IO': {
-          '_constructor' : ((), 0),
+          '_constructor' : (('IO',), 0),
           'abort'        : (('String', 'Nothing',), 1),
           'out'          : (('String', 'IO',), 2),
           'is_null'      : (('Any', 'Boolean',), 3),
@@ -60,7 +60,7 @@ class Environment(object):
           'symbol_name'  : (('Symbol','String',), 7),
         },
         'String': {
-          '_constructor' : ((), 0),
+          '_constructor' : (('String',), 0),
           'length'       : (('Int',), 1),
           'charAt'       : (('Int', 'Int',), 2),
           'concat'       : (('String', 'String', 'String',), 3),
@@ -68,11 +68,11 @@ class Environment(object):
           'indexOf'      : (('String', 'Int',), 5),
         },
         'Symbol': { 
-          '_constructor' : ((), 0),
+          '_constructor' : (('Symbol',), 0),
           'hashCode'     : (('Int',), 1) 
         },
         'ArrayAny': {
-          '_constructor' : (('Int',), 0),
+          '_constructor' : (('Int','ArrayAny',), 0),
           'length'       : (('Int',), 1),
           'resize'       : (('Int','ArrayAny',), 2),
           'get'          : (('Int', 'Any',), 3),
@@ -264,7 +264,7 @@ class Environment(object):
       for hole in reversed(holes):
         for key, val in self.M[cls].iteritems():
           if val[1] > hole:
-            self.M[cls][key] = (val[0], val[1]-1)
+            self.M[cls][key] = (val[0], val[1]-1, val[2])
 
       # Finally, add all of the methods from the superclass that aren't yet
       # defined for the subclass

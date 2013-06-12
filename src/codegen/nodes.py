@@ -65,6 +65,7 @@ def methodtypestring(cls, args):
 
 class Document(NodeCodeGen):
   def generate(self):
+    print env.M
     for child in self.node.children:
       child.codegen.generate()
 
@@ -237,7 +238,7 @@ initialize:
         code += '\n%s = constant [%d x i8] c"%s\\00"' % (const, len(string)+1, string)
     code += constr_form % constructor
 
-    self.output(code)
+    #self.output(code)
 
 
 class Block(NodeCodeGen):
@@ -426,5 +427,5 @@ class AssignExpr(NodeCodeGen):
 
 class Constructor(NodeCodeGen):
   def generate(self, varinfo):
-    pass
+    return ""
     
