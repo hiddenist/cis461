@@ -22,7 +22,7 @@ keywords = {
 }
 
 # "Extended Cool" reserved words
-reserved = ('abstract', 'catch', 'do', 'final', 'finally', 'for', 'forSome', 'implicit', 'import', 'lazy', 'object', 'package', 'private', 'protected', 'requires', 'return', 'sealed', 'throw', 'trait', 'try', 'type', 'val', 'with', 'yield')
+reserved = ('abstract', 'catch', 'do', 'final', 'finally', 'for', 'forSome', 'implicit', 'import', 'lazy', 'object', 'package', 'private', 'protected', 'requires', 'return', 'sealed', 'throw', 'trait', 'try', 'type', 'val', 'with', 'yield', 'native')
 
 # Literal tokens must be a single character
 literals = ('(', ')', '{', '}', ':', '=', '<', '!', '+', '-', '*', '/', '.', ',', ';')
