@@ -414,6 +414,13 @@ class This(NodeCodeGen):
     varinfo['result'] = "%this"
     return ""
 
+class MatchExpr(NodeCodeGen):
+  def generate(self, varinfo):
+    code = "\n  ; Ahh... the beast of a match expression... yeah, umm, I'll do this later."
+
+    varinfo['result_type'] = str(self.node.type)
+    varinfo['result'] = get_next_temp(varinfo)
+    return code
 
 class IfExpr(NodeCodeGen):
   def generate(self, varinfo):
