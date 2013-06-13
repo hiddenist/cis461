@@ -52,15 +52,15 @@ initialize:
 ; let's just use c-style strings to make c functions easier
 @.Any_str_format = constant [11 x i8] c"<%s at %d>\00" 
 define %obj_String* @Any.toString(%obj_Any* %this) {
-	%format = getelementptr [11 x i8]* @.Any_str_format, i32 0, i32 0
-	%buffer = alloca i8, i32 200 ; hopefully this is a reasonable buffer size
+  %format = getelementptr [11 x i8]* @.Any_str_format, i32 0, i32 0
+  %buffer = alloca i8, i32 200 ; hopefully this is a reasonable buffer size
 
   %clsp = getelementptr %obj_Any* %this, i32 0, i32 0
   %cls = load %class_Any** %clsp
   %clsstr = getelementptr %class_Any* %cls, i32 0, i32 1
   %strp = load i8** %clsstr
 
-	call i32 (i8*, i8*, ...)* @sprintf(i8* %buffer, i8* %format, i8* %strp, %obj_Any* %this)
+  call i32 (i8*, i8*, ...)* @sprintf(i8* %buffer, i8* %format, i8* %strp, %obj_Any* %this)
   %str = call %obj_String* @String._constructor(%obj_String* null, i8* %buffer)
   ret %obj_String* %str
 }
@@ -248,14 +248,14 @@ define i32 @.get_int_val(%obj_Int* %int) {
 @.sprintf_format = constant [3 x i8] c"%d\00" 
 
 define %obj_String* @Int.toString(%obj_Int* %this) {
-	%format = getelementptr [3 x i8]* @.sprintf_format, i32 0, i32 0
-	; biggest 32 bit int is 10 chars, and maybe a -, plus null char, 
-	; and some extra just in case I've forgotten something (it's just stack space)
-	%buffer = alloca i8, i32 16
-	%val = call i32 @.get_int_val(%obj_Int* %this)
-	call i32 (i8*, i8*, ...)* @sprintf(i8* %buffer, i8* %format , i32 %val)
-	%str = call %obj_String* @String._constructor(%obj_String* null, i8* %buffer)
-	ret %obj_String* %str
+  %format = getelementptr [3 x i8]* @.sprintf_format, i32 0, i32 0
+  ; biggest 32 bit int is 10 chars, and maybe a -, plus null char, 
+  ; and some extra just in case I've forgotten something (it's just stack space)
+  %buffer = alloca i8, i32 16
+  %val = call i32 @.get_int_val(%obj_Int* %this)
+  call i32 (i8*, i8*, ...)* @sprintf(i8* %buffer, i8* %format , i32 %val)
+  %str = call %obj_String* @String._constructor(%obj_String* null, i8* %buffer)
+  ret %obj_String* %str
 } 
 
 define %obj_Boolean* @Int.equals(%obj_Int* %this, %obj_Any* %that) {
@@ -427,7 +427,7 @@ loopend:
 }
 
 define %obj_String* @String.toString(%obj_String* %this) {
-	ret %obj_String* %this
+  ret %obj_String* %this
 }
 
 define %obj_Boolean* @String.equals(%obj_String* %this, %obj_Any* %that) {
