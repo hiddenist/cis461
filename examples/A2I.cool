@@ -24,3 +24,24 @@ class A2I() {
 
   def i2a(i : Int) : String = i.toString();
 }
+
+class Main() extends A2I() {
+  var io : IO = new IO();
+  {
+    io.out("Enter a number: x = ");
+    var x : Int = a2i(io.in());
+    io.out("Enter another number: y = ");
+    var y : Int = a2i(io.in());
+    io.out("You entered ").out_any(x).out(" and ").out_any(y);
+    io.out("\n-x = ").out_any(-x);
+    io.out("\n-y = ").out_any(-y);
+    io.out("\nx + y = ").out_any(x+y);
+    io.out("\nx - y = ").out_any(x-y);
+    io.out("\nx * y = ").out_any(x*y);
+    io.out("\nx / y = ").out_any(x/y);
+    io.out("\nx < y? ").out_any(x < y);
+    io.out("\nx <= y? ").out_any(x <= y);
+    io.out("\nx == y? ").out_any(x == y);
+    io.out("\n")
+  };
+}
