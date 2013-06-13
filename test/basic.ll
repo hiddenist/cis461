@@ -315,6 +315,22 @@ define %obj_Int* @Int._div(%obj_Int* %this, %obj_Int* %that) {
   ret %obj_Int* %newInt
 }
 
+define %obj_Int* @Int._lt(%obj_Int* %this, %obj_Int* %that) {
+  %lhs = call i32 @.get_int_val(%obj_Int* %this)
+  %rhs = call i32 @.get_int_val(%obj_Int* %that)
+  %val = icmp slt i32 %lhs, %rhs
+  %newInt = call %obj_Int* @Int._constructor(%obj_Int* null, i32 %val)
+  ret %obj_Int* %newInt
+}
+
+define %obj_Int* @Int._le(%obj_Int* %this, %obj_Int* %that) {
+  %lhs = call i32 @.get_int_val(%obj_Int* %this)
+  %rhs = call i32 @.get_int_val(%obj_Int* %that)
+  %val = icmp sle i32 %lhs, %rhs
+  %newInt = call %obj_Int* @Int._constructor(%obj_Int* null, i32 %val)
+  ret %obj_Int* %newInt
+}
+
 
 %class_String = type { 
   %class_Any*,
