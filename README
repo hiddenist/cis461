@@ -9,8 +9,10 @@ class.  This compiler does not have the ArrayAny or Symbol classes implemented.
 
 Prerequisites:
   This project was made using Python 2.7.3, and is not Python 3 compatible.
-  Additionally, clang must be present on your system.  The path to the clang 
-  executable is configurable in the settings.py file.
+  Compliation also requires clang, and was made while using clang 3.0, which 
+  corresponds to LLVM version 3.0.
+
+  The path to the clang executable is configurable in the settings.py file.
 
 Notes:
 - String's substring and charAt methods don't check that the provided indices 
