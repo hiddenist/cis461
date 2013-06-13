@@ -26,31 +26,68 @@ Notes:
 Usage: ./cool <FILE_INPUT>
 
 Contents:
-  src/       - Contains source code
+  bin/  - Contains the coolc executable file
   |
-  | ply/       - The PLY library (so you don't have to install it!)
+  | coolc - A shortcut executable for running the driver file
   |
-  | driver.py  - The driver file.  Takes a cool file as input, and runs the lexer
-  |              and parser on the file.
-  |
-  | error.py   - Contains exceptions for error handling.  Includes the 
-  |              calculation of columns for error reporting
-  |
-  | lexer.py   - Contains lexing rules, token definitions, and a list of 
-  |              "Extended Cool" reserved words
-  |
-  | parser.py  - Contains grammar rules and builds an abstract syntax tree using
-  |              nodes from tree.py.  The yacc script generates a parse table on 
-  |              its first run.
-  |
-  | tree.py    - Class definitions for the AST nodes, including methods to print 
-  |              the tree.
 
-  
+  src/  - Contains source code
+  |
+  | codegen/  - Contains code related to code generation
+  | |
+  | | build/   - Contains files needed to build the LLVM for final compilation
+  | | |
+  | | | basic.ll - LLVM program defining the basic.cool functionality
+  | | |
+  | | | blank.c  - Empty file - used for generating LLVM headers automatically
+  | | |
+  | | | driver.c - C driver for running llvm_main, and some other helper code
+  | | |
+  | |
+  | | __init__.py      - Control code for codegen to be used by the driver
+  | |
+  | | basic.cool       - The basic.cool file for Cool 2013.  Just there for documentation
+  | |                    purposes.
+  | |
+  | | nodes.py         - This file has classes matching those in the AST, and defines the
+  | |                    code generation rules for those nodes.
+  | |
+  | | node_code_gen.py - Base class for codegen nodes
+  | |
+  |
+  | ply/          - The PLY library (so you don't have to install it!)
+  |
+  | type_checking - Contains code related to type checking
+  | |
+  | | __init__.py     - Control code for type checking to be used by the driver
+  | |
+  | | environment.py  - Keeps track of variables, methods and classes during type checking.
+  | |                   Also keeps track of static information for vars/attrs/methods.
+  | |
+  | | nodes.py        - This file has classes matching those in the AST, and defines the
+  | |                   type checking rules for those nodes.
+  | |
+  | | node_checker.py - Base class for the checker nodes
+  | |
+  |
+  | driver.py     - The driver file.  Takes a cool file as input, and runs the lexer
+  |                 and parser on the file.
+  |
+  | error.py      - Contains exceptions for error handling.  Includes the 
+  |                 calculation of columns for error reporting
+  |
+  | lexer.py      - Contains lexing rules, token definitions, and a list of 
+  |                 "Extended Cool" reserved words
+  |
+  | parser.py     - Contains grammar rules and builds an abstract syntax tree using
+  |                 nodes from tree.py.  The yacc script generates a parse table on 
+  |                 its first run.
+  |
+  | tree.py       - Class definitions for the AST nodes, including methods to print 
+  |                 the tree.
+
   examples/  - Contains example cool programs
   
   README     - This file
-  
-  coolc      - A shortcut executable for running the driver file
 
 
