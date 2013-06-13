@@ -37,7 +37,7 @@ class Environment(object):
       self.C['Boolean'] = 'Any'
       self.C['ArrayAny'] = 'Any'
       self.C['IO'] = 'Any'
-      self.C['Symbol'] = 'Any'
+      #self.C['Symbol'] = 'Any'
       
       for c in self.C:
         self.Oc[c] = {}
@@ -56,8 +56,8 @@ class Environment(object):
           'is_null'      : (('Any', 'Boolean',), 3),
           'out_any'      : (('Any', 'IO',), 4),
           'in'           : (('String',), 5),
-          'symbol'       : (('String','Symbol',), 6),
-          'symbol_name'  : (('Symbol','String',), 7),
+          #'symbol'       : (('String','Symbol',), 6),
+          #'symbol_name'  : (('Symbol','String',), 7),
         },
         'String': {
           '_constructor' : (('String',), 0),
@@ -67,27 +67,27 @@ class Environment(object):
           'charAt'       : (('Int', 'Int',), 4),
           'indexOf'      : (('String', 'Int',), 5),
         },
-        'Symbol': { 
-          '_constructor' : (('Symbol',), 0),
-          'hashCode'     : (('Int',), 1) 
-        },
-        'ArrayAny': {
-          '_constructor' : (('Int','ArrayAny',), 0),
-          'length'       : (('Int',), 1),
-          'resize'       : (('Int','ArrayAny',), 2),
-          'get'          : (('Int', 'Any',), 3),
-          'set'          : (('Int', 'Any', 'Any',), 4),
-        }
+        #'Symbol': { 
+        #  '_constructor' : (('Symbol',), 0),
+        #  'hashCode'     : (('Int',), 1) 
+        #},
+        #'ArrayAny': {
+        #  '_constructor' : (('Int','ArrayAny',), 0),
+        #  'length'       : (('Int',), 1),
+        #  'resize'       : (('Int','ArrayAny',), 2),
+        #  'get'          : (('Int', 'Any',), 3),
+        #  'set'          : (('Int', 'Any', 'Any',), 4),
+        #}
       })
 
       self.Oc['Int']['value'] = ('Int', 0)
       self.Oc['Boolean']['value'] = ('Boolean', 0)
       self.Oc['String']['length'] = ('Int', 0)
       self.Oc['String']['str_field'] = ('String', 1)
-      self.Oc['Symbol']['next'] = ('Symbol', 0)
-      self.Oc['Symbol']['name'] = ('String', 1)
-      self.Oc['Symbol']['hash'] = ('Int', 2)
-      self.Oc['ArrayAny']['array_field'] = ('ArrayAny', 0)
+      #self.Oc['Symbol']['next'] = ('Symbol', 0)
+      #self.Oc['Symbol']['name'] = ('String', 1)
+      #self.Oc['Symbol']['hash'] = ('Int', 2)
+      #self.Oc['ArrayAny']['array_field'] = ('ArrayAny', 0)
 
 
   def enterClassScope(self, c):
