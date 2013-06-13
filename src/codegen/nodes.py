@@ -525,8 +525,8 @@ class WhileExpr(NodeCodeGen):
     return code
 
 
-class ArithExpr(NodeCodeGen):
-  def generate(self, method, varinfo):
+class BinaryIntMethod(NodeCodeGen):
+  def generate(self, method, varinfo, returns="Int"):
     code = ""
 
     code += self.node.left.codegen.generate(varinfo)
@@ -536,55 +536,60 @@ class ArithExpr(NodeCodeGen):
     arg2 = varinfo['result']
 
     varinfo['result'] = get_next_temp(varinfo)
-    varinfo['result_type'] = "Int"
-    code += ("\n  %s = call %%obj_Int* @Int._%s(%%obj_Int* %s, %%obj_Int* %s)" % 
-      (varinfo['result'], method, arg1, arg2))
+    varinfo['result_type'] = returns
+    code += ("\n  %s = call %%obj_%s* @Int._%s(%%obj_Int* %s, %%obj_Int* %s)" % 
+      (varinfo['result'], returns, method, arg1, arg2))
     return code
 
-class AddExpr(ArithExpr): 
+class AddExpr(BinaryIntMethod): 
   def generate(self, varinfo):
     return super(AddExpr, self).generate('add', varinfo)
 
-class SubExpr(ArithExpr): 
+class SubExpr(BinaryIntMethod): 
   def generate(self, varinfo):
     return super(SubExpr, self).generate('sub', varinfo)
 
-class MultExpr(ArithExpr): 
+class MultExpr(BinaryIntMethod): 
   def generate(self, varinfo):
     return super(MultExpr, self).generate('mul', varinfo)
 
-class DivExpr(ArithExpr): 
+class DivExpr(BinaryIntMethod): 
   def generate(self, varinfo):
     return super(DivExpr, self).generate('div', varinfo)
 
-class LTExpr(ArithExpr): 
+class LTExpr(BinaryIntMethod): 
   def generate(self, varinfo):
-    return super(LTExpr, self).generate('lt', varinfo)
+    return super(LTExpr, self).generate('lt', varinfo, returns="Boolean")
 
-class LEExpr(ArithExpr): 
+class LEExpr(BinaryIntMethod): 
   def generate(self, varinfo):
-    return super(LEExpr, self).generate('le', varinfo)
+    return super(LEExpr, self).generate('le', varinfo, returns="Boolean")
 
-class UnaryExpr(NodeCodeGen):
-  def generate(self, method, varinfo):
+class NotExpr(NodeCodeGen):
+  def generate(self, varinfo):
     code = ""
 
     code += self.node.arg.codegen.generate(varinfo)
     arg = varinfo['result']
 
     varinfo['result'] = get_next_temp(varinfo)
-    varinfo['result_type'] = "Int"
-    code += ("\n  %s = call %%obj_Int* @Int._%s(%%obj_Int* %s)" % 
-      (varinfo['result'], method, arg1, arg2))
+    varinfo['result_type'] = 'Boolean'
+    code += ("\n  %s = call %%obj_Boolean* @Boolean._not(%%obj_Boolean* %s)" % 
+      (varinfo['result'],  arg))
     return code
 
-class NotExpr(UnaryExpr):
+class NegExpr(NodeCodeGen):
   def generate(self, varinfo):
-    return super(NotExpr, self).generate('not', varinfo)
+    code = ""
 
-class NegExpr(UnaryExpr):
-  def generate(self, varinfo):
-    return super(NegExpr, self).generate('neg', varinfo)
+    code += self.node.arg.codegen.generate(varinfo)
+    arg = varinfo['result']
+
+    varinfo['result'] = get_next_temp(varinfo)
+    varinfo['result_type'] = 'Int'
+    code += ("\n  %s = call %%obj_Int* @Int._neg(%%obj_Int* %s)" % 
+      (varinfo['result'],  arg))
+    return code
 
 class Identifier(NodeCodeGen):
   def generate(self, varinfo):

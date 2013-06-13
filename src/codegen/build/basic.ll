@@ -222,6 +222,13 @@ return:
   ret %obj_Boolean* %bool
 }
 
+define %obj_Boolean* @Boolean._not(%obj_Boolean* %this) {
+  %b = call i1 @.get_bool_val(%obj_Boolean* %this)
+  %val = icmp eq i1 %b, 0
+  %newB = call %obj_Boolean* @Boolean._constructor(%obj_Boolean* null, i1 %val)
+  ret %obj_Boolean* %newB
+}
+
 
 %class_Int = type { 
   %class_Any*,
@@ -320,6 +327,13 @@ return:
   %val = load i1* %res
   %bool = call %obj_Boolean* @Boolean._constructor(%obj_Boolean* null, i1 %val)
   ret %obj_Boolean* %bool
+}
+
+define %obj_Int* @Int._neg(%obj_Int* %this) {
+  %lhs = call i32 @.get_int_val(%obj_Int* %this)
+  %val = mul i32 %lhs, -1
+  %newInt = call %obj_Int* @Int._constructor(%obj_Int* null, i32 %val)
+  ret %obj_Int* %newInt
 }
 
 define %obj_Int* @Int._add(%obj_Int* %this, %obj_Int* %that) {
@@ -637,7 +651,8 @@ return:
   %obj_Nothing* (%obj_IO*, %obj_String*)*, ; abort
   %obj_IO*      (%obj_IO*, %obj_String*)*, ; out
   %obj_Boolean* (%obj_IO*, %obj_Any*)*,    ; isNull
-  %obj_IO*      (%obj_IO*, %obj_Any*)*     ; out_any
+  %obj_IO*      (%obj_IO*, %obj_Any*)*,    ; out_any
+  %obj_String*  (%obj_IO*)*                ; in
 }
 %obj_IO = type { %class_IO* }
 
@@ -652,10 +667,8 @@ return:
   %obj_Nothing* (%obj_IO*, %obj_String*)* @IO.abort,
   %obj_IO*      (%obj_IO*, %obj_String*)* @IO.out,
   %obj_Boolean* (%obj_IO*, %obj_Any*)*    @IO.is_null,
-  %obj_IO*      (%obj_IO*, %obj_Any*)*    @IO.out_any
-  ; in
-  ; symbol
-  ; symbol_name
+  %obj_IO*      (%obj_IO*, %obj_Any*)*    @IO.out_any,
+  %obj_String*  (%obj_IO*)*               @IO.in
 }
 
 define %obj_IO* @IO._constructor(%obj_IO* %obj) {
