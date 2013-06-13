@@ -62,9 +62,9 @@ class Environment(object):
         'String': {
           '_constructor' : (('String',), 0),
           'length'       : (('Int',), 1),
-          'charAt'       : (('Int', 'Int',), 2),
-          'concat'       : (('String', 'String', 'String',), 3),
-          'substring'    : (('Int', 'Int', 'String',), 4),
+          'concat'       : (('String', 'String', 'String',), 2),
+          'substring'    : (('Int', 'Int', 'String',), 3),
+          'charAt'       : (('Int', 'Int',), 4),
           'indexOf'      : (('String', 'Int',), 5),
         },
         'Symbol': { 

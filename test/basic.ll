@@ -339,11 +339,14 @@ define %obj_Boolean* @Int._le(%obj_Int* %this, %obj_Int* %that) {
 %class_String = type { 
   %class_Any*,
   i8*,
-  %obj_String*  (%obj_String*, i8*)*,         ; _constructor
-  %obj_String*  (%obj_String*)*,              ; toString
-  %obj_Boolean* (%obj_String*, %obj_Any*)*,   ; equals
-  %obj_Int*     (%obj_String*)*,              ; length
-  %obj_String*  (%obj_String*, %obj_String*)* ; concat
+  %obj_String*  (%obj_String*, i8*)*,                  ; _constructor
+  %obj_String*  (%obj_String*)*,                       ; toString
+  %obj_Boolean* (%obj_String*, %obj_Any*)*,            ; equals
+  %obj_Int*     (%obj_String*)*,                       ; length
+  %obj_String*  (%obj_String*, %obj_String*)*,         ; concat
+  %obj_String*  (%obj_String*, %obj_Int*, %obj_Int*)*, ; substring
+  %obj_Int*     (%obj_String*, %obj_Int*)*,            ; charAt
+  %obj_Int*     (%obj_String*, %obj_String*)*          ; indexOf
 }
 %obj_String = type { 
   %class_String*,
@@ -354,13 +357,16 @@ define %obj_Boolean* @Int._le(%obj_Int* %this, %obj_Int* %that) {
 @._str.String = constant [7 x i8] c"String\00"
 @.str.String = alias i8* bitcast ([7 x i8]* @._str.String to i8*)
 @String = global %class_String {
-  %class_Any*                                  @Any,
-  i8*                                          @.str.String,
-  %obj_String*  (%obj_String*, i8*)*           @String._constructor,
-  %obj_String*  (%obj_String*)*                @String.toString,
-  %obj_Boolean* (%obj_String*, %obj_Any*)*     @String.equals,
-  %obj_Int*     (%obj_String*)*                @String.length,
-  %obj_String*  (%obj_String*, %obj_String*)*  @String.concat
+  %class_Any*                                          @Any,
+  i8*                                                  @.str.String,
+  %obj_String*  (%obj_String*, i8*)*                   @String._constructor,
+  %obj_String*  (%obj_String*)*                        @String.toString,
+  %obj_Boolean* (%obj_String*, %obj_Any*)*             @String.equals,
+  %obj_Int*     (%obj_String*)*                        @String.length,
+  %obj_String*  (%obj_String*, %obj_String*)*          @String.concat,
+  %obj_String*  (%obj_String*, %obj_Int*, %obj_Int*)*  @String.substring,
+  %obj_Int*     (%obj_String*, %obj_Int*)*             @String.charAt,
+  %obj_Int*     (%obj_String*, %obj_String*)*          @String.indexOf
 }
 
 define %obj_String* @String._constructor(%obj_String* %obj, i8* %str) {
