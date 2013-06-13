@@ -4,6 +4,7 @@ target triple = "i386-pc-linux-gnu"
 
 ; Usually I see these at the bottom of LLVM programs.  Why not the top?
 declare noalias i8* @malloc(i32) nounwind
+declare void @exit(i32) noreturn nounwind
 declare i32 @puts(i8*)
 declare i32 @putchar(i8)
 declare i32 @sprintf(i8*, i8*, ...)
@@ -597,9 +598,13 @@ return:
 %class_IO = type { 
   %class_Any*,
   i8*,
-  %obj_IO*      (%obj_IO*)*,                        ; _constructor
-  %obj_String*  (%obj_IO*)*,                        ; toString
-  %obj_IO*      (%obj_IO*, %obj_String*)*           ; out
+  %obj_IO*      (%obj_IO*)*,               ; _constructor
+  %obj_String*  (%obj_IO*)*,               ; toString
+  %obj_Boolean* (%obj_IO*, %obj_Any*)*,    ; equals
+  void          (%obj_IO*, %obj_String*)*, ; abort
+  %obj_IO*      (%obj_IO*, %obj_String*)*, ; out
+  %obj_Boolean* (%obj_IO*, %obj_Any*)*,    ; isNull
+  %obj_IO*      (%obj_IO*, %obj_Any*)*     ; out_any
 }
 %obj_IO = type { %class_IO* }
 
@@ -610,7 +615,14 @@ return:
   i8*                                     @.str.IO,
   %obj_IO*      (%obj_IO*)*               @IO._constructor,
   %obj_String*  (%obj_IO*)*               @IO.toString,
-  %obj_IO*      (%obj_IO*, %obj_String*)* @IO.out
+  %obj_Boolean* (%obj_IO*, %obj_Any*)*    @IO.equals,
+  void          (%obj_IO*, %obj_String*)* @IO.abort,
+  %obj_IO*      (%obj_IO*, %obj_String*)* @IO.out,
+  %obj_Boolean* (%obj_IO*, %obj_Any*)*    @IO.is_null,
+  %obj_IO*      (%obj_IO*, %obj_Any*)*    @IO.out_any
+  ; in
+  ; symbol
+  ; symbol_name
 }
 
 define %obj_IO* @IO._constructor(%obj_IO* %obj) {
@@ -641,6 +653,22 @@ initialize:
   %obj_String* (%obj_IO*)*
 )
 
+@IO.equals = alias 
+  %obj_Boolean* (%obj_IO*, %obj_Any*)* bitcast (                  
+  %obj_Boolean* (%obj_Any*, %obj_Any*)* @Any.equals to 
+  %obj_Boolean* (%obj_IO*, %obj_Any*)* 
+)
+
+
+define void @IO.abort(%obj_IO* %this, %obj_String* %msg) noreturn nounwind {
+
+  ; Call the static IO out, since the spec doesn't say this calls abort (just that it 
+  ; prints a message), and the standard abort just prints the string
+  call %obj_IO* @IO.out(%obj_IO* %this, %obj_String* %msg)
+
+  call void @exit(i32 0) noreturn nounwind
+  ret void
+}
 
 define %obj_IO* @IO.out(%obj_IO* %this, %obj_String* %str) {  
   %cstr_ptr = getelementptr inbounds %obj_String* %str, i32 0, i32 2
@@ -649,6 +677,43 @@ define %obj_IO* @IO.out(%obj_IO* %this, %obj_String* %str) {
   
   ret %obj_IO* %this
 }
+
+define %obj_Boolean* @IO.is_null(%obj_IO* %this, %obj_Any* %obj) {
+  %res = icmp eq %obj_Any* %obj, null
+  %bool = call %obj_Boolean* @Boolean._constructor(%obj_Boolean* null, i1 %res)
+  ret %obj_Boolean* %bool
+}
+
+@.str.null = constant [5 x i8] c"null\00"
+define %obj_IO* @IO.out_any(%obj_IO* %this, %obj_Any* %arg) {
+
+  %iocls_loc = getelementptr %obj_IO* %this, i32 0, i32 0
+  %iocls = load %class_IO** %iocls_loc
+  %out_loc = getelementptr %class_IO* %iocls, i32 0, i32 6
+  %out = load %obj_IO* (%obj_IO*, %obj_String*)** %out_loc
+
+  %null = icmp eq %obj_Any* %arg, null
+  br i1 %null, label %outnull, label %outobj
+outnull:
+  %ns = getelementptr [5 x i8]* @.str.null, i32 0, i32 0
+  %nullstr = call %obj_String* @String._constructor(%obj_String* null, i8* %ns)
+  call %obj_IO* %out(%obj_IO* %this, %obj_String* %nullstr)
+  
+  br label %return
+outobj:
+  %cls_loc = getelementptr %obj_Any* %arg, i32 0, i32 0
+  %cls = load %class_Any** %cls_loc
+  %tostr_loc = getelementptr %class_Any* %cls, i32 0, i32 3
+  %tostr = load %obj_String* (%obj_Any*)** %tostr_loc
+  %str = call %obj_String* %tostr(%obj_Any* %arg)
+  call %obj_IO* %out(%obj_IO* %this, %obj_String* %str)
+  
+  br label %return
+return:
+
+  ret %obj_IO* %this
+}
+
 
 define i32 @llvm_main() {
   %1 = call %obj_String* @String._constructor(%obj_String* null, i8* @.str.String)
@@ -659,27 +724,19 @@ define i32 @llvm_main() {
   %3 = call %obj_Int* @Int._constructor(%obj_Int* null, i32 2)
   %4 = call %obj_Int* @Int._constructor(%obj_Int* null, i32 5)
 
+
   %5 = call %obj_String* @String.substring(%obj_String* %1, %obj_Int* %3, %obj_Int* %4)
 
-  %obj = call %obj_Int* @String.indexOf(%obj_String* %1, %obj_String* %5)
+  ;%obj = call %obj_Int* @String.indexOf(%obj_String* %1, %obj_String* %5)
   ;%obj = call %obj_String* @String._constructor(%obj_String* null, i8* @.str.IO)
 
-  %as_any = bitcast %obj_Int* %obj to %obj_Any*
+  %aa = bitcast %obj_String* %5 to %obj_Any*
+  %obj = call %obj_Boolean* @IO.is_null(%obj_IO* null, %obj_Any* %aa)
+
+  %as_any = bitcast %obj_Boolean* %obj to %obj_Any*
   ;%as_any = call %obj_Any* @Any._constructor(%obj_Any* null)
   
-  ; Call the "toString" method
-  %cls_loc = getelementptr %obj_Any* %as_any, i32 0, i32 0
-  %cls = load %class_Any** %cls_loc
-  %tostr_loc = getelementptr %class_Any* %cls, i32 0, i32 3
-  %tostr = load %obj_String* (%obj_Any*)** %tostr_loc
-  %str = call %obj_String* %tostr(%obj_Any* %as_any)
-
-  ; Output result to stdout
   %io = call %obj_IO* @IO._constructor(%obj_IO* null)
-  %iocls_loc = getelementptr %obj_IO* %io, i32 0, i32 0
-  %iocls = load %class_IO** %iocls_loc
-  %out_loc = getelementptr %class_IO* %iocls, i32 0, i32 4
-  %out = load %obj_IO* (%obj_IO*, %obj_String*)** %out_loc
-  call %obj_IO* %out(%obj_IO* %io, %obj_String* %str)
+  call %obj_IO* @IO.out_any(%obj_IO* %io, %obj_Any* %as_any)
   ret i32 0
 }
