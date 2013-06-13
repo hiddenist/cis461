@@ -3,6 +3,10 @@ CIS 461 - Intro to Compiler Construction
 Spring 2013
 
 
+Usage: ./coolc <FILE_INPUT> (<OUTPUT FILE>)
+
+---------
+
 Compiler for the Cool language for the University of Oregon spring 2013 compilers
 class.  This compiler does not have the ArrayAny or Symbol classes implemented.
 
@@ -18,21 +22,17 @@ Notes:
 - String's substring and charAt methods don't check that the provided indices 
   are in bounds. Out-of-bounds incides will access unknown memory.
 
-- The IO.in() method has an input limit of 1024 characters.  Buffer overflow
-  shouldn't be a problem, since I'm using fgets and not gets.
+- The IO.in() method has an input limit of 1024 characters.  Overflowing input
+  may be captured by subsequent in() calls.
 
 - Since Symbol is not implemented, IO does not have the Symbol methods.
 
+- There are almost certainly bugs!  Some files may not compile, but all of the 
+  provided example files have been tested to work.
+
 ----------
 
-Usage: ./cool <FILE_INPUT>
-
 Contents:
-  bin/  - Contains the coolc executable file
-  |
-  | coolc - A shortcut executable for running the driver file
-  |
-
   src/  - Contains source code
   |
   | codegen/  - Contains code related to code generation
@@ -95,7 +95,27 @@ Contents:
   |
 
   examples/  - Contains example cool programs
-  
-  README     - This file
+  |
+  | A2I.cool      - The A2I class provided with the Cool materials for turning
+  |                 Strings into Ints, and a driver for testing Int operators.
+  |
+  | hello.cool    - A simple hello world program.
+  |
+  | IOTest.cool   - Tests each of the IO methods.
+  |
+  | override.cool - Tests inheritance and override; uses 'this' and 'super'
+  |
+  | pal.cool      - Provided with the Cool materials. Takes a string as input
+  |                 and tells you if that string is a palindrome.
+  |
+  | primes.cool   - Provided with the Cool materials. Generates prime numbers
+  |                 until user-terminated.
+  |
+  | strings.cool  - Tests each of the String methods.
+  |
+
+  coolc - A shortcut executable for running the driver file
+
+  README - You're reading it.
 
 
