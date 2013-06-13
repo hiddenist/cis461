@@ -1,13 +1,13 @@
 import sys
 from settings import *
 
-USAGE = """usage: %s <INPUT FILE> (<OUTPUT FILE>)
+USAGE = """usage: coolc <INPUT FILE> (<OUTPUT FILE>)
 
   Takes a Cool file as input, and creates an executable.
 
   If no output file is specified, this will use the name of the Cool file 
   without the extension.
-""" % sys.argv[0]
+"""
 
   
 

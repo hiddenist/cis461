@@ -8,7 +8,7 @@ string_constants = 0
 
 OBJ_PTR = "%%obj_%s*"
 
-GET_FIELD_ADDR = "\n  %(temp)s = getelementptr %%obj_%(class)s* %%ret, i32 0, i32 %(loc)d"
+GET_FIELD_ADDR = "\n  %(temp)s = getelementptr %%obj_%(class)s* %%this, i32 0, i32 %(loc)d"
 STORE_FIELD = (
   GET_FIELD_ADDR + 
   "\n  store %%obj_%(type)s* %(addr)s, %%obj_%(type)s** %(temp)s"
@@ -240,8 +240,9 @@ initialize:
       'labels': 0,
       'class': cls
     }
+
     for arg, formal in enumerate(self.node.formals.children):
-      argname = "%%arg%d" % arg
+      argname = "%%a%d" % arg
       constructor['body'] += STORE_FIELD % {
         'temp': get_next_temp(varinfo), 
         'class': cls, 
@@ -496,8 +497,6 @@ class WhileExpr(NodeCodeGen):
     code = ""
 
     ty = "%%obj_%s*" % str(self.node.type)
-    ralloc = get_next_temp(varinfo)
-    code += "\n  %s = alloca %%obj_%s*" % (ralloc, ty)
 
     loopcheck = get_next_label(varinfo)
     loopbegin = get_next_label(varinfo)
@@ -629,10 +628,22 @@ class VarInit(NodeCodeGen):
 
 class AssignExpr(NodeCodeGen):
   def generate(self, varinfo):
-    var = self.node.left.static
+    code = ""
+    static = self.node.left.static
     ty = self.node.left.type
+    
 
-    code = _assign_var(varinfo, ty, self.node.right, var)
+    if isinstance(static, int):
+      var = get_next_temp(varinfo)
+      code += GET_FIELD_ADDR % {
+        'temp' : var,
+        'class' : varinfo['class'],
+        'loc' : static + 1 # I really should update this elsewhere so I don't forget
+      }
+    else:
+      var = static
+
+    code += _assign_var(varinfo, ty, self.node.right, var)
 
     varinfo['result'] = '@the_Unit'
     varinfo['result_type'] = "Unit"

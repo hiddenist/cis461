@@ -79,6 +79,40 @@ define %obj_Boolean* @Any.equals(%obj_Any* %this, %obj_Any* %that) {
 }
 
 
+%class_Unit = type {
+  %class_Any*,
+  i8*,
+  %obj_Unit* (%obj_Unit*)*,              ; _constructor
+  %obj_String*  (%obj_Unit*)*,           ; toString
+  %obj_Boolean* (%obj_Unit*, %obj_Any*)* ; equals
+}
+
+%obj_Unit = type { %class_Unit* }
+
+@._str.Unit = constant [5 x i8] c"Unit\00"
+@.str.Unit = alias i8* bitcast ([5 x i8]* @._str.Unit to i8*)
+@Unit = global %class_Unit {
+  %class_Any*                            @Any,
+  i8*                                    @.str.Unit,
+  %obj_Unit* (%obj_Unit*)*               null,
+  %obj_String*  (%obj_Unit*)*            @Unit.toString,           
+  %obj_Boolean* (%obj_Unit*, %obj_Any*)* @Unit.equals
+}
+
+@the_Unit = global %obj_Unit { %class_Unit* @Unit }
+
+@Unit.toString = alias 
+  %obj_String* (%obj_Unit*)* bitcast (                  
+  %obj_String* (%obj_Any*)* @Any.toString to 
+  %obj_String* (%obj_Unit*)*
+)
+
+@Unit.equals = alias 
+  %obj_Boolean* (%obj_Unit*, %obj_Any*)* bitcast (                  
+  %obj_Boolean* (%obj_Any*, %obj_Any*)* @Any.equals to 
+  %obj_Boolean* (%obj_Unit*, %obj_Any*)* 
+)
+
 
 %class_Boolean = type { 
   %class_Any*,
