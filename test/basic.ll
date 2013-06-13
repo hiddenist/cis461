@@ -528,6 +528,25 @@ define %obj_String* @String.substring(%obj_String* %this, %obj_Int* %start, %obj
 }
 
 
+define %obj_Int* @String.charAt(%obj_String* %this, %obj_Int* %pos) {
+  %strp = getelementptr %obj_String* %this, i32 0, i32 2
+  %str = load i8** %strp
+  %i = call i32 @.get_int_val(%obj_Int* %pos)
+  %atpos = getelementptr i8* %str, i32 %i
+
+  %chr = load i8* %atpos
+  %a = alloca i32
+
+  %ac = bitcast i32* %a to i8*
+  store i8 %chr, i8* %ac
+
+  %ord = load i32* %a
+
+  %int = call %obj_Int* @Int._constructor(%obj_Int* null, i32 %ord)
+  ret %obj_Int* %int
+}
+
+
 %class_IO = type { 
   %class_Any*,
   i8*,
@@ -590,13 +609,12 @@ define i32 @llvm_main() {
   ;%3 = bitcast %obj_String* %2 to %obj_Any*
   ;%obj = call %obj_Boolean* @String.equals(%obj_String* %1, %obj_Any* %3)
 
-  %2 = call %obj_Int* @Int._constructor(%obj_Int* null, i32 3)
-  %3 = call %obj_Int* @Int._constructor(%obj_Int* null, i32 6)
+  %2 = call %obj_Int* @Int._constructor(%obj_Int* null, i32 1)
 
-  %obj = call %obj_String* @String.substring(%obj_String* %1, %obj_Int* %2, %obj_Int* %3)
+  %obj = call %obj_Int* @String.charAt(%obj_String* %1, %obj_Int* %2)
   ;%obj = call %obj_String* @String._constructor(%obj_String* null, i8* @.str.IO)
 
-  %as_any = bitcast %obj_String* %obj to %obj_Any*
+  %as_any = bitcast %obj_Int* %obj to %obj_Any*
   ;%as_any = call %obj_Any* @Any._constructor(%obj_Any* null)
   
   ; Call the "toString" method
