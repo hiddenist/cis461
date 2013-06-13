@@ -8,6 +8,7 @@ declare i32 @puts(i8*)
 declare i32 @putchar(i8)
 declare i32 @sprintf(i8*, i8*, ...)
 declare i32 @strlen(i8*) nounwind readonly
+declare i32 @strcmp(i8*, i8*) nounwind readonly
 
 %class_Any = type { 
   %class_Any*,
@@ -92,7 +93,7 @@ define %obj_Boolean* @Any.equals(%obj_Any* %this, %obj_Any* %that) {
   %class_Any*                               @Any,
   i8*                                       @.str.Boolean,
   %obj_Boolean* (%obj_Boolean*, i1)*        @Boolean._constructor,
-  %obj_String*  (%obj_Boolean*)*,           @Boolean.toString
+  %obj_String*  (%obj_Boolean*)*            @Boolean.toString,
   %obj_Boolean* (%obj_Boolean*, %obj_Any*)* @Boolean.equals
 }
 
@@ -186,8 +187,9 @@ return:
 %class_Int = type { 
   %class_Any*,
   i8*,
-  %obj_Int*     (%obj_Int*, i32)*,    ; _constructor
-  %obj_String*  (%obj_Int*)*          ; toString
+  %obj_Int*     (%obj_Int*, i32)*,      ; _constructor
+  %obj_String*  (%obj_Int*)*,           ; toString
+  %obj_Boolean* (%obj_Int*, %obj_Any*)* ; equals
 }
 %obj_Int = type { 
   %class_Int*,
@@ -197,10 +199,11 @@ return:
 @._str.Int = constant [4 x i8] c"Int\00"
 @.str.Int = alias i8* bitcast ([4 x i8]* @._str.Int to i8*)
 @Int = global %class_Int { 
-  %class_Any*                           @Any,
-  i8*                                   @.str.Int,
-  %obj_Int*     (%obj_Int*, i32)*       @Int._constructor,
-  %obj_String*     (%obj_Int*)*         @Int.toString
+  %class_Any*                            @Any,
+  i8*                                    @.str.Int,
+  %obj_Int*      (%obj_Int*, i32)*       @Int._constructor,
+  %obj_String*   (%obj_Int*)*            @Int.toString,
+  %obj_Boolean*  (%obj_Int*, %obj_Any*)* @Int.equals
 }
 
 define %obj_Int* @Int._constructor(%obj_Int* %obj, i32 %val) {
@@ -255,6 +258,31 @@ define %obj_String* @Int.toString(%obj_Int* %this) {
 	ret %obj_String* %str
 } 
 
+define %obj_Boolean* @Int.equals(%obj_Int* %this, %obj_Any* %that) {
+  %typep = getelementptr %obj_Any* %that, i32 0, i32 0
+  %type = load %class_Any** %typep
+  %bcls = bitcast %class_Int* @Int to %class_Any*
+  %ib = icmp eq %class_Any* %type, %bcls
+  %res = alloca i1
+  store i1 %ib, i1* %res
+  br i1 %ib, label %isint, label %return
+
+isint:
+  %that_int = bitcast %obj_Any* %that to %obj_Int*
+  %thisv = call i32 @.get_int_val(%obj_Int* %this)
+  %thatv = call i32 @.get_int_val(%obj_Int* %that_int)
+
+  %eq = icmp eq i32 %thisv, %thatv
+  store i1 %eq, i1* %res
+
+  br label %return
+return:
+
+  %val = load i1* %res
+  %bool = call %obj_Boolean* @Boolean._constructor(%obj_Boolean* null, i1 %val)
+  ret %obj_Boolean* %bool
+}
+
 define %obj_Int* @Int._add(%obj_Int* %this, %obj_Int* %that) {
   %lhs = call i32 @.get_int_val(%obj_Int* %this)
   %rhs = call i32 @.get_int_val(%obj_Int* %that)
@@ -291,7 +319,10 @@ define %obj_Int* @Int._div(%obj_Int* %this, %obj_Int* %that) {
 %class_String = type { 
   %class_Any*,
   i8*,
-  %obj_String*  (%obj_String*, i8*)*                                ; _constructor
+  %obj_String*  (%obj_String*, i8*)*,       ; _constructor
+  %obj_String*  (%obj_String*)*,            ; toString
+  %obj_Boolean* (%obj_String*, %obj_Any*)*, ; equals
+  %obj_Int* (%obj_String*)*                 ; length
 }
 %obj_String = type { 
   %class_String*,
@@ -302,11 +333,13 @@ define %obj_Int* @Int._div(%obj_Int* %this, %obj_Int* %that) {
 @._str.String = constant [7 x i8] c"String\00"
 @.str.String = alias i8* bitcast ([7 x i8]* @._str.String to i8*)
 @String = global %class_String {
-  %class_Any*                                         @Any,
-  i8*                                                 @.str.String,
-  %obj_String*  (%obj_String*, i8*)*                  @String._constructor
+  %class_Any*                              @Any,
+  i8*                                      @.str.String,
+  %obj_String*  (%obj_String*, i8*)*       @String._constructor,
+  %obj_String*  (%obj_String*)*            @String.toString,
+  %obj_Boolean* (%obj_String*, %obj_Any*)* @String.equals,
+  %obj_Int* (%obj_String*)*                @String.length
 }
-
 
 define %obj_String* @String._constructor(%obj_String* %obj, i8* %str) {
   %isnull = icmp eq %obj_String* %obj, null
@@ -381,6 +414,43 @@ define %obj_String* @String.toString(%obj_String* %this) {
 	ret %obj_String* %this
 }
 
+define %obj_Boolean* @String.equals(%obj_String* %this, %obj_Any* %that) {
+  %typep = getelementptr %obj_Any* %that, i32 0, i32 0
+  %type = load %class_Any** %typep
+  %bcls = bitcast %class_String* @String to %class_Any*
+  %ib = icmp eq %class_Any* %type, %bcls
+  %res = alloca i1
+  store i1 %ib, i1* %res
+  br i1 %ib, label %isstr, label %return
+
+isstr:
+  %that_str = bitcast %obj_Any* %that to %obj_String*
+
+  %s1p = getelementptr %obj_String* %this, i32 0, i32 2
+  %s1 = load i8** %s1p
+
+  %s2p = getelementptr %obj_String* %that_str, i32 0, i32 2
+  %s2 = load i8** %s2p
+
+  %cmp = call i32 @strcmp(i8* %s1, i8* %s2)
+  %eq = icmp eq i32 %cmp, 0
+
+  store i1 %eq, i1* %res
+  br label %return
+return:
+
+  %val = load i1* %res
+  %bool = call %obj_Boolean* @Boolean._constructor(%obj_Boolean* null, i1 %val)
+  ret %obj_Boolean* %bool
+}
+
+define %obj_Int* @String.length(%obj_String* %this) {
+  %field = getelementptr %obj_String* %this, i32 0, i32 1
+  %len = load %obj_Int** %field
+  ret %obj_Int* %len
+}
+
+
 %class_IO = type { 
   %class_Any*,
   i8*,
@@ -438,10 +508,10 @@ define %obj_IO* @IO.out(%obj_IO* %this, %obj_String* %str) {
 }
 
 define i32 @llvm_main() {
-  %1 = call %obj_Boolean* @Boolean._constructor(%obj_Boolean* null, i1 0)
-  %2 = call %obj_Int* @Int._constructor(%obj_Int* null, i32 0)
-  %3 = bitcast %obj_Int* %2 to %obj_Any*
-  %obj = call %obj_Boolean* @Boolean.equals(%obj_Boolean* %1, %obj_Any* %3)
+  %1 = call %obj_String* @String._constructor(%obj_String* null, i8* @.str.Any)
+  %2 = call %obj_String* @String._constructor(%obj_String* null, i8* @.str.IO)
+  %3 = bitcast %obj_String* %2 to %obj_Any*
+  %obj = call %obj_Boolean* @String.equals(%obj_String* %1, %obj_Any* %3)
 
   %as_any = bitcast %obj_Boolean* %obj to %obj_Any*
   ;%as_any = call %obj_Any* @Any._constructor(%obj_Any* null)
