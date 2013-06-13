@@ -318,22 +318,21 @@ define %obj_Int* @Int._div(%obj_Int* %this, %obj_Int* %that) {
   ret %obj_Int* %newInt
 }
 
-define %obj_Int* @Int._lt(%obj_Int* %this, %obj_Int* %that) {
+define %obj_Boolean* @Int._lt(%obj_Int* %this, %obj_Int* %that) {
   %lhs = call i32 @.get_int_val(%obj_Int* %this)
   %rhs = call i32 @.get_int_val(%obj_Int* %that)
   %val = icmp slt i32 %lhs, %rhs
-  %newInt = call %obj_Int* @Int._constructor(%obj_Int* null, i32 %val)
-  ret %obj_Int* %newInt
+  %bool = call %obj_Boolean* @Boolean._constructor(%obj_Boolean* null, i1 %val)
+  ret %obj_Boolean* %bool
 }
 
-define %obj_Int* @Int._le(%obj_Int* %this, %obj_Int* %that) {
+define %obj_Boolean* @Int._le(%obj_Int* %this, %obj_Int* %that) {
   %lhs = call i32 @.get_int_val(%obj_Int* %this)
   %rhs = call i32 @.get_int_val(%obj_Int* %that)
   %val = icmp sle i32 %lhs, %rhs
-  %newInt = call %obj_Int* @Int._constructor(%obj_Int* null, i32 %val)
-  ret %obj_Int* %newInt
+  %bool = call %obj_Boolean* @Boolean._constructor(%obj_Boolean* null, i1 %val)
+  ret %obj_Boolean* %bool
 }
-
 
 %class_String = type { 
   %class_Any*,
@@ -480,8 +479,8 @@ define %obj_String* @String.concat(%obj_String* %this, %obj_String* %that) {
   %l2 = call i32 @.get_int_val(%obj_Int* %l2i)
 
   %newlen = add i32 %l1, %l2
-  %0 = add i32 %newlen, 1 ; plus null byte
-  %stacksp = alloca i8*, i32 %0
+  %1 = add i32 %newlen, 1 ; plus null byte
+  %stacksp = alloca i8, i32 %1
 
   %s1p = getelementptr %obj_String* %this, i32 0, i32 2
   %s1 = load i8** %s1p
@@ -491,7 +490,7 @@ define %obj_String* @String.concat(%obj_String* %this, %obj_String* %that) {
   call i8* @strcpy(i8* %stacksp, i8* %s1)
   call i8* @strcat(i8* %stacksp, i8* %s2)
 
-  %new = call %obj_String* @String._constructor(%obj_String* null, i8* @.str.Any)
+  %new = call %obj_String* @String._constructor(%obj_String* null, i8* %stacksp)
   ret %obj_String* %new
 
 }
