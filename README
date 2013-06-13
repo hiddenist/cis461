@@ -87,7 +87,12 @@ Contents:
   |             its first run.
   |
   | tree.py   - Class definitions for the AST nodes, including methods to print 
-  |                 the tree.
+  |             the tree.
+  |
+  | tree_linker.py - Defines a base class for the control code in codegen and
+  |             type checking.  Links nodes from the AST to nodes in another
+  |             module file if they have the same name.
+  |
 
   examples/  - Contains example cool programs
   

@@ -41,8 +41,15 @@ if __name__ == "__main__":
 
 
   if os.path.exists(outfile):
-    sys.exit("The file %s already exists.\n" % outfile
-      +"Please remove it or specify a different output file as the second argument.")
+    yes = ('yes','y','Y','')
+    no = ('no','n','N')
+    override = raw_input("The file %s already exists.  Overwrite? [Y/n]: "%outfile)
+    while override not in yes + no:
+      override = raw_input("Please specify yes or no: ")
+
+    if override in no:
+      sys.exit("Aborting compilation")
+
 
   print "outputting to", outfile
 
@@ -57,9 +64,15 @@ if __name__ == "__main__":
   Error.filename = filename
   Error.input = text
 
+  srcpath = os.path.dirname(os.path.abspath(__file__))
+
   try:
-    if verbose: print "--- Beginning parsing ---"
-    tree = yacc.parse(text, lexer=lex, debug=PARSE_DEBUG)
+    if verbose: print "--- Beginning lexing/parsing ---"
+    tree = yacc.parse(
+      text, 
+      lexer=lex, 
+      debug=PARSE_DEBUG
+    )
 
     if Error.errors:
       errorExit()
@@ -75,14 +88,14 @@ if __name__ == "__main__":
     if verbose: print "--- Beginning code generation ---"
     code = CodeGen(tree).generate()
 
-    build_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "codegen/build")
+    build_path = os.path.join(srcpath, "codegen/build")
 
     with open(os.path.join(build_path, "basic.ll")) as f:
       core_code = f.read()
 
     blankfile = os.path.join(build_path, "blank.c")
 
-    cmd = [settings.CLANG_PATH, blankfile, "-S", "-emit-llvm", "-o" "-"]
+    cmd = [CLANG_PATH, blankfile, "-S", "-emit-llvm", "-o" "-"]
 
     try:
       llvm_headers = subprocess.check_output(cmd)
@@ -94,11 +107,12 @@ if __name__ == "__main__":
     
     complete_llvm = "\n".join([llvm_headers, core_code, code])
 
-    with open(outfile + ".ll", "w") as f:
-      f.write(complete_llvm)
+    if WRITE_LLVM_FILE:
+      with open(outfile + ".ll", "w") as f:
+        f.write(complete_llvm)
 
     c_driver = os.path.join(build_path, "driver.c")
-    cmd = [settings.CLANG_PATH, c_driver, '-x', 'ir', '-', '-o', outfile]
+    cmd = [CLANG_PATH, c_driver, '-x', 'ir', '-', '-o', outfile]
     pipe = subprocess.Popen(cmd, stdin=subprocess.PIPE)
     outdata, errdata = pipe.communicate(complete_llvm)
     pipe.wait()

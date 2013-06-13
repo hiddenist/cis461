@@ -387,7 +387,8 @@ class ClassOpts(ConstructorCheck):
 class Constructor(ConstructorCheck):
   def check(self):
     if self.node.type.name in UNINSTANTIABLE_TYPES:
-      TypeCheckError("Objects of type '%s' are uninstantiable", self.token).report()
+      TypeCheckError("Objects of type '%s' are uninstantiable" % self.node.type.name, 
+        self.token).report()
     return super(Constructor, self).check()
 
 

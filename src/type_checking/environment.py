@@ -1,5 +1,7 @@
 from error import SymbolError, UndefinedClassError
-from settings import SYMBOL_DEBUG as DEBUG, SIMULATE_BASIC
+from settings import SYMBOL_DEBUG as DEBUG
+
+SIMULATE_BASIC = True
 
 class Environment(object):
   def __init__(self):

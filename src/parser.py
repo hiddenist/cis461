@@ -1,4 +1,5 @@
 import ply.yacc as yacc
+import os
 from lexer import tokens
 from tree import *
 from error import *
@@ -410,4 +411,7 @@ def p_dot_primary(p):
   "dot : primary"
   p[0] = p[1]
 
-yacc.yacc(debug=DEBUG)
+yacc.yacc(
+  debug=DEBUG, 
+  tabmodule=os.path.join(os.path.dirname(os.path.abspath(__file__)), "parsetab")
+)

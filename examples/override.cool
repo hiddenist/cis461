@@ -1,0 +1,13 @@
+class Main() extends IO() {
+  override def out(s : String) : IO = {
+    super.out(": ");
+    super.out(s);
+    super.out("\n");
+    this
+  };
+  {
+    out("This main class extends IO, and overrides the out method to");
+    out("prepend messages with a colon and append them with a newline.");
+    out("This class uses the 'this' and 'super' keywords.")
+  };
+}

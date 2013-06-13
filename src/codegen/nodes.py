@@ -319,8 +319,6 @@ class Block(NodeCodeGen):
     code = "\n\n  ;;; block ;;;"
     for instr in self.node.children:
       if hasattr(instr, 'codegen'):
-        code += "\n  ; codegen for %s" % type(instr)
-        code += "\n  ; used vars: %d" % varinfo['used']
         code += instr.codegen.generate(varinfo)
       else:
         code += "\n  ; No codegen for %s " % type(instr)
@@ -340,12 +338,12 @@ class Call(NodeCodeGen):
       name = self.node.method.child.name
     elif isinstance(self.node, tree.Super):
       code += "\n  ; Super call!"
-      obj = get_next_temp(varinfo)
       cls = varinfo['class']
       supercls = env.getSuperClass(cls)
       super_call = True
       name = self.node.method.name
-      code += "\n  %s = bitcast %%obj_%s* to %%obj_%s*" % (obj, cls, supercls)
+      # bitcast this as its superclass...
+      obj = "%this"
     else:
       obj = "%this"
       cls = varinfo['class']
@@ -354,12 +352,6 @@ class Call(NodeCodeGen):
     m = env.getMethod(cls, name)
     loc = m[1] + 2
     
-    args = [obj]
-    for actual,argtype in zip(self.node.actuals.children, m[0]):
-      code += actual.codegen.generate(varinfo)
-      code += bitcast_if_necessary(varinfo, argtype, varinfo['result_type'], varinfo['result'])
-      args.append(varinfo['result'])
-
     temp = get_next_temp(varinfo)
     code += "\n  %s = getelementptr %%obj_%s* %s, i32 0, i32 0" % (temp, cls, obj) 
 
@@ -373,6 +365,9 @@ class Call(NodeCodeGen):
       temp2p2 = get_next_temp(varinfo)
       code += "\n  %s = load %%class_%s** %s" % (temp2p2, supercls, temp2p1)
 
+      obj = get_next_temp(varinfo)
+      code += "\n  %s = bitcast %%obj_%s* %%this to %%obj_%s*" % (obj, cls, supercls)
+
       temp2 = temp2p2
       cls = supercls
 
@@ -381,6 +376,12 @@ class Call(NodeCodeGen):
 
     temp4 = get_next_temp(varinfo)
     code += "\n  %s = load %s* %s" % (temp4, methodtypestring(cls, m[0]), temp3)
+
+    args = [obj]
+    for actual,argtype in zip(self.node.actuals.children, m[0]):
+      code += actual.codegen.generate(varinfo)
+      code += bitcast_if_necessary(varinfo, argtype, varinfo['result_type'], varinfo['result'])
+      args.append(varinfo['result'])
 
     code += "\n\n  ; Calling %s.%s" % (supercls if super_call else cls, name)
     temp5 = get_next_temp(varinfo)
@@ -438,13 +439,13 @@ class Null(NodeCodeGen):
 
 class This(NodeCodeGen):
   def generate(self, varinfo):
-    varinfo['result_type'] = varinfo['cls']
+    varinfo['result_type'] = varinfo['class']
     varinfo['result'] = "%this"
     return ""
 
 class MatchExpr(NodeCodeGen):
   def generate(self, varinfo):
-    code = "\n  ; Ahh... the beast of a match expression... yeah, umm, I'll do this later."
+    code = "\n  ; Ahh... the beast of a match expression... yeah, umm, I'll do this later. Or not."
 
     varinfo['result_type'] = str(self.node.type)
     varinfo['result'] = get_next_temp(varinfo)

@@ -650,7 +650,7 @@ return:
   %obj_Boolean* (%obj_IO*, %obj_Any*)*,    ; equals
   %obj_Nothing* (%obj_IO*, %obj_String*)*, ; abort
   %obj_IO*      (%obj_IO*, %obj_String*)*, ; out
-  %obj_Boolean* (%obj_IO*, %obj_Any*)*,    ; isNull
+  %obj_Boolean* (%obj_IO*, %obj_Any*)*,    ; is_null
   %obj_IO*      (%obj_IO*, %obj_Any*)*,    ; out_any
   %obj_String*  (%obj_IO*)*                ; in
 }

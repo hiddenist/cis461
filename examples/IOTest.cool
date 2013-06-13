@@ -1,0 +1,25 @@
+class Main() extends IO() {
+  {
+    out("IO.out test - if you can see this, it's working.\n");
+    out("IO.in test - enter some input: ");
+
+    var s : String = in();
+
+    out("Got: ").out(s);
+    out("\n of length ").out_any(s.length());
+
+    var a : Any = null;
+
+    out("\n\nIO.out_any test on null: ").out_any(a);
+    out("\nIO.is_null test on null: ").out_any(is_null(a));
+
+    a = new IO();
+
+    out("\n\nIO.out_any test on IO: ").out_any(a);
+    out("\nIO.is_null test on IO: ").out_any(is_null(a));
+
+    out("\n\nIO.abort test:");
+    abort("\nAborted, no text should follow this.\n");
+    out("abort failed\n")
+  };
+}
