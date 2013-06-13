@@ -7,8 +7,11 @@ declare noalias i8* @malloc(i32) nounwind
 declare i32 @puts(i8*)
 declare i32 @putchar(i8)
 declare i32 @sprintf(i8*, i8*, ...)
+
 declare i32 @strlen(i8*) nounwind readonly
 declare i32 @strcmp(i8*, i8*) nounwind readonly
+declare i8* @strcat(i8*, i8*)
+declare i8* @strcpy(i8*, i8*)
 
 %class_Any = type { 
   %class_Any*,
@@ -335,10 +338,11 @@ define %obj_Int* @Int._le(%obj_Int* %this, %obj_Int* %that) {
 %class_String = type { 
   %class_Any*,
   i8*,
-  %obj_String*  (%obj_String*, i8*)*,       ; _constructor
-  %obj_String*  (%obj_String*)*,            ; toString
-  %obj_Boolean* (%obj_String*, %obj_Any*)*, ; equals
-  %obj_Int* (%obj_String*)*                 ; length
+  %obj_String*  (%obj_String*, i8*)*,         ; _constructor
+  %obj_String*  (%obj_String*)*,              ; toString
+  %obj_Boolean* (%obj_String*, %obj_Any*)*,   ; equals
+  %obj_Int*     (%obj_String*)*,              ; length
+  %obj_String*  (%obj_String*, %obj_String*)* ; concat
 }
 %obj_String = type { 
   %class_String*,
@@ -349,12 +353,13 @@ define %obj_Int* @Int._le(%obj_Int* %this, %obj_Int* %that) {
 @._str.String = constant [7 x i8] c"String\00"
 @.str.String = alias i8* bitcast ([7 x i8]* @._str.String to i8*)
 @String = global %class_String {
-  %class_Any*                              @Any,
-  i8*                                      @.str.String,
-  %obj_String*  (%obj_String*, i8*)*       @String._constructor,
-  %obj_String*  (%obj_String*)*            @String.toString,
-  %obj_Boolean* (%obj_String*, %obj_Any*)* @String.equals,
-  %obj_Int* (%obj_String*)*                @String.length
+  %class_Any*                                  @Any,
+  i8*                                          @.str.String,
+  %obj_String*  (%obj_String*, i8*)*           @String._constructor,
+  %obj_String*  (%obj_String*)*                @String.toString,
+  %obj_Boolean* (%obj_String*, %obj_Any*)*     @String.equals,
+  %obj_Int*     (%obj_String*)*                @String.length,
+  %obj_String*  (%obj_String*, %obj_String*)*  @String.concat
 }
 
 define %obj_String* @String._constructor(%obj_String* %obj, i8* %str) {
@@ -401,6 +406,7 @@ initialize:
   ;   new_str[i] = str[i];
   ; } while (str[i++] != '\0'); 
   ;
+  ; Turns out I could just use c's strcpy for this, but oh well
 
   %ip = alloca i32
   store i32 0, i32* %ip
@@ -466,6 +472,30 @@ define %obj_Int* @String.length(%obj_String* %this) {
   ret %obj_Int* %len
 }
 
+define %obj_String* @String.concat(%obj_String* %this, %obj_String* %that) {
+
+  %l1i = call %obj_Int* @String.length(%obj_String* %this)
+  %l1 = call i32 @.get_int_val(%obj_Int* %l1i)
+  %l2i = call %obj_Int* @String.length(%obj_String* %that)
+  %l2 = call i32 @.get_int_val(%obj_Int* %l2i)
+
+  %newlen = add i32 %l1, %l2
+  %0 = add i32 %newlen, 1 ; plus null byte
+  %stacksp = alloca i8*, i32 %0
+
+  %s1p = getelementptr %obj_String* %this, i32 0, i32 2
+  %s1 = load i8** %s1p
+  %s2p = getelementptr %obj_String* %that, i32 0, i32 2
+  %s2 = load i8** %s2p
+
+  call i8* @strcpy(i8* %stacksp, i8* %s1)
+  call i8* @strcat(i8* %stacksp, i8* %s2)
+
+  %new = call %obj_String* @String._constructor(%obj_String* null, i8* @.str.Any)
+  ret %obj_String* %new
+
+}
+
 
 %class_IO = type { 
   %class_Any*,
@@ -526,10 +556,13 @@ define %obj_IO* @IO.out(%obj_IO* %this, %obj_String* %str) {
 define i32 @llvm_main() {
   %1 = call %obj_String* @String._constructor(%obj_String* null, i8* @.str.Any)
   %2 = call %obj_String* @String._constructor(%obj_String* null, i8* @.str.IO)
-  %3 = bitcast %obj_String* %2 to %obj_Any*
-  %obj = call %obj_Boolean* @String.equals(%obj_String* %1, %obj_Any* %3)
+  ;%3 = bitcast %obj_String* %2 to %obj_Any*
+  ;%obj = call %obj_Boolean* @String.equals(%obj_String* %1, %obj_Any* %3)
 
-  %as_any = bitcast %obj_Boolean* %obj to %obj_Any*
+  %obj = call %obj_String* @String.concat(%obj_String* %1, %obj_String* %2)
+  ;%obj = call %obj_String* @String._constructor(%obj_String* null, i8* @.str.IO)
+
+  %as_any = bitcast %obj_String* %obj to %obj_Any*
   ;%as_any = call %obj_Any* @Any._constructor(%obj_Any* null)
   
   ; Call the "toString" method
