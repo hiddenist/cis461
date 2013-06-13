@@ -2,8 +2,6 @@
 
 declare noalias i8* @malloc(i32) nounwind
 declare void @exit(i32) noreturn nounwind
-declare i32 @puts(i8*)
-declare i32 @putchar(i8)
 declare i32 @sprintf(i8*, i8*, ...)
 
 declare i32 @strlen(i8*) nounwind readonly
@@ -12,6 +10,7 @@ declare i8* @strcat(i8*, i8*)
 declare i8* @strcpy(i8*, i8*)
 declare i8* @strstr(i8*, i8*)
 
+declare void @io_out(i8*)
 declare i8* @io_in(i8*, i32)
 
 %obj_Nothing = type { }
@@ -707,7 +706,7 @@ define %obj_Nothing* @IO.abort(%obj_IO* %this, %obj_String* %msg) {
 define %obj_IO* @IO.out(%obj_IO* %this, %obj_String* %str) {  
   %cstr_ptr = getelementptr inbounds %obj_String* %str, i32 0, i32 2
   %cstr = load i8** %cstr_ptr
-  call i32 @puts(i8* %cstr)
+  call void @io_out(i8* %cstr)
   
   ret %obj_IO* %this
 }
@@ -748,9 +747,19 @@ return:
   ret %obj_IO* %this
 }
 
+@.str.empty = constant i8 0
 define %obj_String* @IO.in(%obj_IO* %this) {
   %buf = alloca i8, i32 1024
-  call i8* @io_in(i8* %buf, i32 1024)
+  %c = call i8* @io_in(i8* %buf, i32 1024)
+  %r = alloca i8*
+  store i8* %c, i8** %r
+  %nul = icmp eq i8* %c, null
+  br i1 %nul, label %isnull, label %return
+isnull:
+  store i8* @.str.empty, i8** %r
+  br label %return
+return:
+  %s = load i8** %r
   %str = call %obj_String* @String._constructor(%obj_String* null, i8* %buf)
   ret %obj_String* %str
 }

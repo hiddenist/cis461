@@ -14,6 +14,10 @@ char* io_in(char* buff, size_t len) {
   return 0;
 }
 
+void io_out(char* out) {
+  printf("%s", out);
+}
+
 int main() {
   llvm_main();
   return 0;
