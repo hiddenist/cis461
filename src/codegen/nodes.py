@@ -28,6 +28,11 @@ def bitcast_if_necessary(varinfo, expected, got, loc):
   varinfo['result_type'] = expected
   return code
 
+def get_next_label(varinfo):
+  temp = "label%d" % varinfo['labels']
+  varinfo['labels'] += 1
+  return temp
+
 def get_next_temp(varinfo):
   temp = "%%%d" % varinfo['used']
   varinfo['used'] += 1
@@ -99,8 +104,18 @@ def methodtypestring(cls, argtypes):
 
 class Document(NodeCodeGen):
   def generate(self):
+    methodcode = []
+
+    # First output all of the class definitions
     for child in self.node.children:
-      child.codegen.generate()
+      c, m = child.codegen.generate()
+      self.output(c)
+      methodcode.append(m)
+
+    # Then output all of the methods after
+    # there are sometimes getelementptr type problems otherwise
+    for method in methodcode:
+      self.output(method)
 
     code = """
 define void @llvm_main() {
@@ -192,6 +207,7 @@ class Class(NodeCodeGen):
     }
     constr_form = """
 define %(def)s {
+entry:
   %%objstk = alloca %%obj_%(class)s*
   store %%obj_%(class)s* %%child, %%obj_%(class)s** %%objstk
   %%isnull = icmp eq %%obj_%(class)s* %%child, null
@@ -220,6 +236,7 @@ initialize:
 
     varinfo = {
       'used': 0,
+      'labels': 0,
       'class': cls
     }
     for arg, formal in enumerate(self.node.formals.children):
@@ -251,13 +268,15 @@ initialize:
           'addr': result
         }
 
-    code += string_const_code(varinfo)
-    code += constr_form % constructor
+    defcode = ""
+    defcode += string_const_code(varinfo)
+    defcode += constr_form % constructor
 
     for method in defs:
-      code += method.codegen.generate(cls)
+      defcode += method.codegen.generate(cls)
 
-    self.output(code)
+    return code, defcode
+
 
 class Def(NodeCodeGen):
   def generate(self, cls):
@@ -269,10 +288,12 @@ class Def(NodeCodeGen):
 
     varinfo = {
       'used': 0,
+      'labels': 0,
       'class': cls
     }
 
     body = "\n\ndefine %s {" % methoddefstring(cls, name, args)
+    body += "\nentry:"
 
     body += self.node.value.codegen.generate(varinfo)
 
@@ -435,24 +456,24 @@ class IfExpr(NodeCodeGen):
     ralloc = get_next_temp(varinfo)
     code += "\n  %s = alloca %%obj_%s*" % (ralloc, ty)
 
-    labeltrue = get_next_temp(varinfo)
-    labelfalse = get_next_temp(varinfo)
-    labelfi = get_next_temp(varinfo)
+    labeltrue = get_next_label(varinfo)
+    labelfalse = get_next_label(varinfo)
+    labelfi = get_next_label(varinfo)
 
-    code += "\n  br i1 %s, label %s, label %s" % (bv, labeltrue, labelfalse)
-    code += "\n; <label>:%s" % labeltrue
+    code += "\n  br i1 %s, label %%%s, label %%%s" % (bv, labeltrue, labelfalse)
+    code += "\n%s:" % labeltrue
 
     code += self.node.true.codegen.generate(varinfo)
 
     code += "\n  store %s %s, %s* %s" % (ty, varinfo['result'], ty, ralloc)
-    code += "\n  br label %s" % labelfi
-    code += "\n; <label>:%s" % labelfalse
+    code += "\n  br label %%%s" % labelfi
+    code += "\n%s:" % labelfalse
     
     code += self.node.false.codegen.generate(varinfo)
 
     code += "\n  store %s %s, %s* %s" % (ty, varinfo['result'], ty, ralloc)
-    code += "\n  br label %s" % labelfi
-    code += "\n; <label>:%s" % labelfi
+    code += "\n  br label %%%s" % labelfi
+    code += "\n%s:" % labelfi
 
     res = get_next_temp(varinfo)
     code += "\n  %s = load %s %s" % (res, ty, ralloc)
@@ -471,25 +492,26 @@ class WhileExpr(NodeCodeGen):
     ralloc = get_next_temp(varinfo)
     code += "\n  %s = alloca %%obj_%s*" % (ralloc, ty)
 
-    loopcheck = get_next_temp(varinfo)
-    loopbegin = get_next_temp(varinfo)
-    loopend = get_next_temp(varinfo)
+    loopcheck = get_next_label(varinfo)
+    loopbegin = get_next_label(varinfo)
+    loopend = get_next_label(varinfo)
 
-    code += "\n; <label>:%s" % loopcheck
+    code += "\n  br label %%%s" % loopcheck
+    code += "\n%s:" % loopcheck
 
     code += self.node.cond.codegen.generate(varinfo)
     cond = varinfo['result']
     bv = get_next_temp(varinfo)
     code += "\n  %s = call i1 @.get_bool_val(%%obj_Boolean* %s)" % (bv, cond)
 
-    code += "\n  br i1 %s, label %s, label %s" % (bv, loopbegin, loopend)
+    code += "\n  br i1 %s, label %%%s, label %%%s" % (bv, loopbegin, loopend)
 
-    code += "\n; <label>:%s" % loopbegin
+    code += "\n%s:" % loopbegin
 
     code += self.node.control.codegen.generate(varinfo)
 
-    code += "\n  br label %s" % loopcheck
-    code += "\n; <label>:%s" % loopend
+    code += "\n  br label %%%s" % loopcheck
+    code += "\n%s:" % loopend
 
     varinfo['result'] = "@the_Unit"
     varinfo['result_type'] = "Unit"
