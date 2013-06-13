@@ -1,4 +1,4 @@
 #/bin/bash
 
 FILEPATH="`dirname \"$0\"`"
-python $FILEPATH/../src/driver.py $@
+python $FILEPATH/src/driver.py $@
