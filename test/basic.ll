@@ -465,11 +465,13 @@ return:
   ret %obj_Boolean* %bool
 }
 
+
 define %obj_Int* @String.length(%obj_String* %this) {
   %field = getelementptr %obj_String* %this, i32 0, i32 1
   %len = load %obj_Int** %field
   ret %obj_Int* %len
 }
+
 
 define %obj_String* @String.concat(%obj_String* %this, %obj_String* %that) {
 
@@ -493,6 +495,36 @@ define %obj_String* @String.concat(%obj_String* %this, %obj_String* %that) {
   %new = call %obj_String* @String._constructor(%obj_String* null, i8* %stacksp)
   ret %obj_String* %new
 
+}
+
+
+define %obj_String* @String.substring(%obj_String* %this, %obj_Int* %start, %obj_Int* %end) {
+
+  ; todo: How do I generate a runtime error? 
+  ; Right now, bad things will happen if you use out of bounds arguments.  Meh.
+  
+  ; Copy the string into stack space
+  %len = call %obj_Int* @String.length(%obj_String* %this)
+  %i = call i32 @.get_int_val(%obj_Int* %len)
+  %1 = add i32 %i, 1
+  %stacksp = alloca i8, i32 %1
+  
+  %strp = getelementptr %obj_String* %this, i32 0, i32 2
+  %str = load i8** %strp
+
+  call i8* @strcpy(i8* %stacksp, i8* %str)
+
+  ; insert a null char at the end index
+  %to = call i32 @.get_int_val(%obj_Int* %end)
+  %endp = getelementptr i8* %stacksp, i32 %to
+  store i8 0, i8* %endp
+
+  ; get a pointer to the start index and pass it to the string constructor
+  %from = call i32 @.get_int_val(%obj_Int* %start)
+  %startp = getelementptr i8* %stacksp, i32 %from
+
+  %new = call %obj_String* @String._constructor(%obj_String* null, i8* %startp)
+  ret %obj_String* %new
 }
 
 
@@ -553,12 +585,15 @@ define %obj_IO* @IO.out(%obj_IO* %this, %obj_String* %str) {
 }
 
 define i32 @llvm_main() {
-  %1 = call %obj_String* @String._constructor(%obj_String* null, i8* @.str.Any)
-  %2 = call %obj_String* @String._constructor(%obj_String* null, i8* @.str.IO)
+  %1 = call %obj_String* @String._constructor(%obj_String* null, i8* @.str.String)
+  ;%2 = call %obj_String* @String._constructor(%obj_String* null, i8* @.str.IO)
   ;%3 = bitcast %obj_String* %2 to %obj_Any*
   ;%obj = call %obj_Boolean* @String.equals(%obj_String* %1, %obj_Any* %3)
 
-  %obj = call %obj_String* @String.concat(%obj_String* %1, %obj_String* %2)
+  %2 = call %obj_Int* @Int._constructor(%obj_Int* null, i32 3)
+  %3 = call %obj_Int* @Int._constructor(%obj_Int* null, i32 6)
+
+  %obj = call %obj_String* @String.substring(%obj_String* %1, %obj_Int* %2, %obj_Int* %3)
   ;%obj = call %obj_String* @String._constructor(%obj_String* null, i8* @.str.IO)
 
   %as_any = bitcast %obj_String* %obj to %obj_Any*
