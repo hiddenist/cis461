@@ -1,4 +1,5 @@
 ; Usually I see these at the bottom of LLVM programs.  Why not the top?
+
 declare noalias i8* @malloc(i32) nounwind
 declare void @exit(i32) noreturn nounwind
 declare i32 @puts(i8*)
@@ -10,6 +11,10 @@ declare i32 @strcmp(i8*, i8*) nounwind readonly
 declare i8* @strcat(i8*, i8*)
 declare i8* @strcpy(i8*, i8*)
 declare i8* @strstr(i8*, i8*)
+
+declare i8* @io_in(i8*, i32)
+
+%obj_Nothing = type { }
 
 %class_Any = type { 
   %class_Any*,
@@ -596,7 +601,7 @@ return:
   %obj_IO*      (%obj_IO*)*,               ; _constructor
   %obj_String*  (%obj_IO*)*,               ; toString
   %obj_Boolean* (%obj_IO*, %obj_Any*)*,    ; equals
-  void          (%obj_IO*, %obj_String*)*, ; abort
+  %obj_Nothing* (%obj_IO*, %obj_String*)*, ; abort
   %obj_IO*      (%obj_IO*, %obj_String*)*, ; out
   %obj_Boolean* (%obj_IO*, %obj_Any*)*,    ; isNull
   %obj_IO*      (%obj_IO*, %obj_Any*)*     ; out_any
@@ -611,7 +616,7 @@ return:
   %obj_IO*      (%obj_IO*)*               @IO._constructor,
   %obj_String*  (%obj_IO*)*               @IO.toString,
   %obj_Boolean* (%obj_IO*, %obj_Any*)*    @IO.equals,
-  void          (%obj_IO*, %obj_String*)* @IO.abort,
+  %obj_Nothing* (%obj_IO*, %obj_String*)* @IO.abort,
   %obj_IO*      (%obj_IO*, %obj_String*)* @IO.out,
   %obj_Boolean* (%obj_IO*, %obj_Any*)*    @IO.is_null,
   %obj_IO*      (%obj_IO*, %obj_Any*)*    @IO.out_any
@@ -655,14 +660,14 @@ initialize:
 )
 
 
-define void @IO.abort(%obj_IO* %this, %obj_String* %msg) noreturn nounwind {
+define %obj_Nothing* @IO.abort(%obj_IO* %this, %obj_String* %msg) {
 
   ; Call the static IO out, since the spec doesn't say this calls abort (just that it 
   ; prints a message), and the standard abort just prints the string
   call %obj_IO* @IO.out(%obj_IO* %this, %obj_String* %msg)
 
   call void @exit(i32 0) noreturn nounwind
-  ret void
+  ret %obj_Nothing* null
 }
 
 define %obj_IO* @IO.out(%obj_IO* %this, %obj_String* %str) {  
@@ -707,5 +712,12 @@ outobj:
 return:
 
   ret %obj_IO* %this
+}
+
+define %obj_String* @IO.in(%obj_IO* %this) {
+  %buf = alloca i8, i32 1024
+  call i8* @io_in(i8* %buf, i32 1024)
+  %str = call %obj_String* @String._constructor(%obj_String* null, i8* %buf)
+  ret %obj_String* %str
 }
 
