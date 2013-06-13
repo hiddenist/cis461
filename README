@@ -4,18 +4,26 @@ Spring 2013
 
 
 Compiler for the Cool language for the University of Oregon spring 2013 compilers
-class. This is not yet a full compiler.  Currently, it lexes the input file and 
-creates an abstract syntax tree, and prints that tree in JSON.
-
-Note that on the first run, a message saying that the parse tree was generated
-will be output along with the JSON.
+class.  This compiler does not have the ArrayAny or Symbol classes implemented.
 
 
-Usage: ./cool <FILE_INPUT> (<OUTPUT FORMAT>)
+Prerequisites:
+  This project was made using Python 2.7.3, and is not Python 3 compatible.
+  Additionally, clang must be present on your system.  The path to the clang executable
+  is configurable in the settings.py file.
 
-  By default, the output format is JSON.  "Parens" may also be used for an 
-  indented, parenthesized-style format. 
+Notes:
+- String's substring and charAt methods don't check that the provided indices are in bounds.  
+  This means that out-of-bounds incides will access unknown memory.
 
+- The IO.in() method has an input limit of 1024 characters.  I don't know what happens if you
+  enter more than that.
+
+- Since Symbol is not implemented, IO does not have the Symbol methods.
+
+----------
+
+Usage: ./cool <FILE_INPUT>
 
 Contents:
   src/       - Contains source code
@@ -33,10 +41,11 @@ Contents:
   |
   | parser.py  - Contains grammar rules and builds an abstract syntax tree using
   |              nodes from tree.py.  The yacc script generates a parse table on 
-	|              its first run.
+  |              its first run.
   |
   | tree.py    - Class definitions for the AST nodes, including methods to print 
   |              the tree.
+
   
   examples/  - Contains example cool programs
   
