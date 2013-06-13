@@ -9,15 +9,15 @@ class.  This compiler does not have the ArrayAny or Symbol classes implemented.
 
 Prerequisites:
   This project was made using Python 2.7.3, and is not Python 3 compatible.
-  Additionally, clang must be present on your system.  The path to the clang executable
-  is configurable in the settings.py file.
+  Additionally, clang must be present on your system.  The path to the clang 
+  executable is configurable in the settings.py file.
 
 Notes:
-- String's substring and charAt methods don't check that the provided indices are in bounds.  
-  This means that out-of-bounds incides will access unknown memory.
+- String's substring and charAt methods don't check that the provided indices 
+  are in bounds. Out-of-bounds incides will access unknown memory.
 
-- The IO.in() method has an input limit of 1024 characters.  I don't know what happens if you
-  enter more than that.
+- The IO.in() method has an input limit of 1024 characters.  Buffer overflow
+  shouldn't be a problem, since I'm using fgets and not gets.
 
 - Since Symbol is not implemented, IO does not have the Symbol methods.
 
@@ -46,11 +46,11 @@ Contents:
   | |
   | | __init__.py      - Control code for codegen to be used by the driver
   | |
-  | | basic.cool       - The basic.cool file for Cool 2013.  Just there for documentation
-  | |                    purposes.
+  | | basic.cool       - The basic.cool file for Cool 2013.  Just there for 
+  | |                    documentation purposes.
   | |
-  | | nodes.py         - This file has classes matching those in the AST, and defines the
-  | |                    code generation rules for those nodes.
+  | | nodes.py         - This file has classes matching those in the AST, and
+  | |                    defines the code generation rules for those nodes.
   | |
   | | node_code_gen.py - Base class for codegen nodes
   | |
@@ -61,29 +61,30 @@ Contents:
   | |
   | | __init__.py     - Control code for type checking to be used by the driver
   | |
-  | | environment.py  - Keeps track of variables, methods and classes during type checking.
-  | |                   Also keeps track of static information for vars/attrs/methods.
+  | | environment.py  - Keeps track of variables, methods and classes during 
+  | |                   type checking.Also keeps track of static information for 
+  | |                   vars/attrs/methods.
   | |
-  | | nodes.py        - This file has classes matching those in the AST, and defines the
-  | |                   type checking rules for those nodes.
+  | | nodes.py        - This file has classes matching those in the AST, and 
+  | |                   defines the type checking rules for those nodes.
   | |
   | | node_checker.py - Base class for the checker nodes
   | |
   |
-  | driver.py     - The driver file.  Takes a cool file as input, and runs the lexer
-  |                 and parser on the file.
+  | driver.py - The driver file.  Takes a cool file as input, and runs the lexer
+  |             and parser on the file.
   |
-  | error.py      - Contains exceptions for error handling.  Includes the 
-  |                 calculation of columns for error reporting
+  | error.py  - Contains exceptions for error handling.  Includes the 
+  |             calculation of columns for error reporting
   |
-  | lexer.py      - Contains lexing rules, token definitions, and a list of 
-  |                 "Extended Cool" reserved words
+  | lexer.py  - Contains lexing rules, token definitions, and a list of 
+  |             "Extended Cool" reserved words
   |
-  | parser.py     - Contains grammar rules and builds an abstract syntax tree using
-  |                 nodes from tree.py.  The yacc script generates a parse table on 
-  |                 its first run.
+  | parser.py - Contains grammar rules and builds an abstract syntax tree using
+  |             nodes from tree.py.  The yacc script generates a parse table on 
+  |             its first run.
   |
-  | tree.py       - Class definitions for the AST nodes, including methods to print 
+  | tree.py   - Class definitions for the AST nodes, including methods to print 
   |                 the tree.
 
   examples/  - Contains example cool programs
