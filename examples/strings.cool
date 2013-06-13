@@ -1,0 +1,15 @@
+class Main() extends IO() {
+  {
+    var foo : String = "Foo";
+    var bar : String = "Bar";
+    var foobar : String = foo.concat(bar);
+    out("foo = ").out(foo);
+    out("\nbar = ").out(bar);
+    out("\nfoobar = foo.concat(bar): ").out(foobar);
+    out("\nfoobar.length(): ").out_any(foobar.length());
+    out("\nfoobar.substring(2, 5): ").out(foobar.substring(2, 5));
+    out("\nfoobar.charAt(0): ").out_any(foobar.charAt(0));
+    out("\nfoobar.indexOf(bar): ").out_any(foobar.indexOf(bar));
+    out("\n")
+  };
+}
