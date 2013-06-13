@@ -41,7 +41,7 @@ if __name__ == "__main__":
 
 
   if os.path.exists(outfile):
-    sys.exit("ERROR: The file %s already exists. " % outfile
+    sys.exit("The file %s already exists.\n" % outfile
       +"Please remove it or specify a different output file as the second argument.")
 
   print "outputting to", outfile
