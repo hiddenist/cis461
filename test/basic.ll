@@ -7,11 +7,13 @@ declare noalias i8* @malloc(i32) nounwind
 declare i32 @puts(i8*)
 declare i32 @putchar(i8)
 declare i32 @sprintf(i8*, i8*, ...)
+declare i32 @printf(i8*, ...)
 
 declare i32 @strlen(i8*) nounwind readonly
 declare i32 @strcmp(i8*, i8*) nounwind readonly
 declare i8* @strcat(i8*, i8*)
 declare i8* @strcpy(i8*, i8*)
+declare i8* @strstr(i8*, i8*)
 
 %class_Any = type { 
   %class_Any*,
@@ -547,6 +549,45 @@ define %obj_Int* @String.charAt(%obj_String* %this, %obj_Int* %pos) {
 }
 
 
+define %obj_Int* @String.indexOf(%obj_String* %this, %obj_String* %sub) {
+  
+  %s1p = getelementptr %obj_String* %this, i32 0, i32 2
+  %s1 = load i8** %s1p
+  %s2p = getelementptr %obj_String* %sub, i32 0, i32 2
+  %s2 = load i8** %s2p
+  
+  %pos = call i8* @strstr(i8* %s1, i8* %s2)
+
+  ; strstr returns a pointer to the substring location (or null), not an index
+  ; So, use -1 if its null, or calculate the difference between pointers for the index
+
+  %res = alloca i32
+  %isnull = icmp eq i8* %pos, null
+
+  br i1 %isnull, label %nomatch, label %match
+
+nomatch:
+  store i32 -1, i32* %res
+  br label %return
+
+match:
+  ; This will truncate the pointer on 64 bit systems
+  ; I think that's okay, since the strings shouldn't be too far apart, right?
+  %startp = ptrtoint i8* %s1 to i32
+  %subp = ptrtoint i8* %pos to i32
+
+  %diff = sub i32 %subp, %startp
+  store i32 %diff, i32* %res
+
+  br label %return
+return:
+
+  %i = load i32* %res
+  %int = call %obj_Int* @Int._constructor(%obj_Int* null, i32 %i)
+  ret %obj_Int* %int
+}
+
+
 %class_IO = type { 
   %class_Any*,
   i8*,
@@ -605,13 +646,16 @@ define %obj_IO* @IO.out(%obj_IO* %this, %obj_String* %str) {
 
 define i32 @llvm_main() {
   %1 = call %obj_String* @String._constructor(%obj_String* null, i8* @.str.String)
-  ;%2 = call %obj_String* @String._constructor(%obj_String* null, i8* @.str.IO)
+  %2 = call %obj_String* @String._constructor(%obj_String* null, i8* @.str.IO)
   ;%3 = bitcast %obj_String* %2 to %obj_Any*
   ;%obj = call %obj_Boolean* @String.equals(%obj_String* %1, %obj_Any* %3)
 
-  %2 = call %obj_Int* @Int._constructor(%obj_Int* null, i32 1)
+  %3 = call %obj_Int* @Int._constructor(%obj_Int* null, i32 2)
+  %4 = call %obj_Int* @Int._constructor(%obj_Int* null, i32 5)
 
-  %obj = call %obj_Int* @String.charAt(%obj_String* %1, %obj_Int* %2)
+  %5 = call %obj_String* @String.substring(%obj_String* %1, %obj_Int* %3, %obj_Int* %4)
+
+  %obj = call %obj_Int* @String.indexOf(%obj_String* %1, %obj_String* %5)
   ;%obj = call %obj_String* @String._constructor(%obj_String* null, i8* @.str.IO)
 
   %as_any = bitcast %obj_Int* %obj to %obj_Any*
