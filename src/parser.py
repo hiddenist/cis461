@@ -302,6 +302,7 @@ def p_control_match(p):
 
 def p_match(p):
 	"match : match MATCH cases"
+  raise error.NotImplemented("The match expression has not been implemented in this compiler.")
 	p[0] = MatchExpr(p[1], p[3], token=ParseToken(p, 2))
 
 def p_cases(p):

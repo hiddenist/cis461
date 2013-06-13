@@ -30,6 +30,9 @@ class Error(Exception):
 		self.errorno = -1
 		if settings.DEBUG: Error.elist.remove(self)
 		
+class NotImplemented(Error):
+  pass
+
 class TokenError(Error):
 	def __init__(self, string, token=None):
 		super(TokenError, self).__init__(string)
