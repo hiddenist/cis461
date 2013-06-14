@@ -7,8 +7,9 @@ Usage: coolc <FILE_INPUT> (<OUTPUT FILE>)
 
 ---------
 
-Compiler for the Cool language for the University of Oregon spring 2013 compilers
-class.  This compiler does not have the ArrayAny or Symbol classes implemented.
+Compiler for the Cool language for the University of Oregon spring 2013 
+compilers class.  This compiler does not have the ArrayAny or Symbol classes 
+implemented.
 
 
 Prerequisites:
