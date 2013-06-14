@@ -29,10 +29,43 @@ Notes:
 
 - There are almost certainly bugs!  Some files may not compile, but all of the 
   provided example files have been tested to work.
+  
+
+Final disclaimer:
+  Anyone who happens to run across this project: it was written for a class, 
+  and there are several problems with how it's put together - and some awful
+  practices were thrown together in the final rush.  It's not good code! but
+  it does appear to work, for what it's worth.
 
 ----------
 
 Contents:
+
+  coolc - A shortcut executable for running the driver file
+
+  examples/  - Contains example cool programs
+  |
+  | A2I.cool      - The A2I class provided with the Cool materials for turning
+  |                 Strings into Ints, and a driver for testing Int operators.
+  |
+  | hello.cool    - A simple hello world program.
+  |
+  | IOTest.cool   - Tests each of the IO methods.
+  |
+  | override.cool - Tests inheritance and override; uses 'this' and 'super'
+  |
+  | pal.cool      - Provided with the Cool materials. Takes a string as input
+  |                 and tells you if that string is a palindrome.
+  |
+  | primes.cool   - Provided with the Cool materials. Generates prime numbers
+  |                 until user-terminated.  This will crash fast, since there
+  |                 is no garbage collection.
+  |
+  | strings.cool  - Tests each of the String methods.
+  |
+
+  README - You're reading it.
+
   src/  - Contains source code
   |
   | codegen/  - Contains code related to code generation
@@ -93,30 +126,5 @@ Contents:
   |             type checking.  Links nodes from the AST to nodes in another
   |             module file if they have the same name.
   |
-
-  examples/  - Contains example cool programs
-  |
-  | A2I.cool      - The A2I class provided with the Cool materials for turning
-  |                 Strings into Ints, and a driver for testing Int operators.
-  |
-  | hello.cool    - A simple hello world program.
-  |
-  | IOTest.cool   - Tests each of the IO methods.
-  |
-  | override.cool - Tests inheritance and override; uses 'this' and 'super'
-  |
-  | pal.cool      - Provided with the Cool materials. Takes a string as input
-  |                 and tells you if that string is a palindrome.
-  |
-  | primes.cool   - Provided with the Cool materials. Generates prime numbers
-  |                 until user-terminated.  This will crash fast, since there
-  |                 is no garbage collection.
-  |
-  | strings.cool  - Tests each of the String methods.
-  |
-
-  coolc - A shortcut executable for running the driver file
-
-  README - You're reading it.
 
 
