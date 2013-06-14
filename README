@@ -3,7 +3,7 @@ CIS 461 - Intro to Compiler Construction
 Spring 2013
 
 
-Usage: ./coolc <FILE_INPUT> (<OUTPUT FILE>)
+Usage: coolc <FILE_INPUT> (<OUTPUT FILE>)
 
 ---------
 
@@ -109,7 +109,8 @@ Contents:
   |                 and tells you if that string is a palindrome.
   |
   | primes.cool   - Provided with the Cool materials. Generates prime numbers
-  |                 until user-terminated.
+  |                 until user-terminated.  This will crash fast, since there
+  |                 is no garbage collection.
   |
   | strings.cool  - Tests each of the String methods.
   |

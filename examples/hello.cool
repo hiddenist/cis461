@@ -1,5 +1,5 @@
 class Main() extends IO() {
   {
-    out("Hello, world")
+    out("Hello, world\n")
   };
 }

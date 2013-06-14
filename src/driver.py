@@ -1,7 +1,8 @@
 import sys
 from settings import *
 
-USAGE = """usage: coolc <INPUT FILE> (<OUTPUT FILE>)
+USAGE = """
+usage: coolc <INPUT FILE> (<OUTPUT FILE>)
 
   Takes a Cool file as input, and creates an executable.
 
